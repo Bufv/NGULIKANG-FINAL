@@ -1,0 +1,41 @@
+const express = require('express');
+const helmet = require('helmet');
+const cors = require('cors');
+const morgan = require('morgan');
+const env = require('./config/env');
+const path = require('path');
+const authRoutes = require('./routes/authRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const marketplaceRoutes = require('./routes/marketplaceRoutes');
+const chatRoutes = require('./routes/chatRoutes');
+const { notFound, errorHandler } = require('./middleware/errorHandler');
+
+const app = express();
+
+app.use(helmet());
+app.use(
+  cors({
+    origin: env.corsOrigins.length ? env.corsOrigins : true,
+    credentials: true
+  })
+);
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true }));
+app.use(morgan('dev'));
+
+const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+app.use('/uploads', express.static(uploadDir));
+app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/marketplace', marketplaceRoutes);
+app.use('/api/chat', chatRoutes);
+
+app.use(notFound);
+app.use(errorHandler);
+
+module.exports = app;

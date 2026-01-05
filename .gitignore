@@ -1,0 +1,56 @@
+# ========================================
+# .gitignore untuk Ngulikang Monorepo
+# ========================================
+
+# === Ngulikang Git Ignore ===
+# Env
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build output
+/dist/
+/build/
+**/dist/
+**/build/
+
+# Vite/CRA caches
+.vite/
+**/.vite/
+.cache/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Database volumes
+postgres_data/
+pgdata/
+
+# Docker override
+docker-compose.override.yml
+
+# Uploads & generated media
+uploads/
+backend/uploads/
+public/uploads/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db

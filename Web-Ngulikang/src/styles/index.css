@@ -1,0 +1,436 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  --primary-orange: #FF8C42;
+  --secondary-orange: #FFB88C;
+  --dark-bg: #1a1a1a;
+  --light-text: #ffffff;
+  --dark-text: #2c2c2c;
+  --glass-bg: rgba(255, 255, 255, 0.1);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --gradient-peach: linear-gradient(180deg, #1a1a1a 0%, #2d1810 50%, #1a1a1a 100%);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  line-height: 1.6;
+  color: var(--dark-text);
+  overflow-x: hidden;
+  background-color: #000;
+  background-image:
+    radial-gradient(circle at 15% 50%, rgba(255, 140, 66, 0.15), transparent 25%),
+    radial-gradient(circle at 85% 30%, rgba(255, 140, 66, 0.15), transparent 25%),
+    linear-gradient(180deg, #150a05 0%, #000000 100%);
+  background-attachment: fixed;
+  position: relative;
+  min-height: 100vh;
+}
+
+/* Header Container */
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  padding: 20px;
+  transition: all 0.3s ease;
+  display: flex;
+  justify-content: center;
+}
+
+.header.scrolled {
+  padding: 10px 20px;
+}
+
+/* Navbar - CSS Grid for Perfect Centering */
+.navbar {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 50px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  align-items: center;
+  padding: 24px 50px;
+  /* Increased padding (Height) */
+  margin: 0 auto;
+  width: 95%;
+  /* Increased width (Width) */
+  max-width: 1600px;
+  /* Allow it to grow wider on big screens */
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.15);
+}
+
+.navbar.navbar-glass {
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  padding: 20px 50px;
+  /* Increased padding on scroll to stay thick */
+}
+
+/* Left Section (Logo) */
+.navbar-left {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+/* Center Section (Navigation Menu) */
+.navbar-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Right Section (Icons & CTA) */
+.navbar-right {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Logo Color - White for contrast */
+.logo span {
+  color: #ffffff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  font-size: 22px !important;
+  /* Slightly larger logo */
+}
+
+.nav-menu {
+  display: flex;
+  gap: 35px;
+  list-style: none;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-menu li {
+  position: relative;
+}
+
+.nav-menu a {
+  color: rgba(255, 255, 255, 0.95);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 15px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: 0.5px;
+  position: relative;
+  padding-bottom: 4px;
+}
+
+.nav-menu a:hover {
+  color: var(--primary-orange);
+  transform: translateY(-2px);
+}
+
+.nav-menu a.active {
+  color: var(--primary-orange);
+}
+
+/* Animated Underline for Active Nav Item */
+.nav-underline {
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--primary-orange), var(--secondary-orange));
+  border-radius: 2px;
+}
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 140, 66, 0.5);
+  color: var(--primary-orange);
+  box-shadow: 0 4px 12px rgba(255, 140, 66, 0.3);
+}
+
+.nav-cta {
+  background: linear-gradient(135deg, #b3541e, #8a3c10);
+  border: none;
+  padding: 10px 26px;
+  border-radius: 50px;
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(160, 82, 45, 0.3);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.nav-cta::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #c45d22, #b3541e);
+  transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: -1;
+}
+
+.nav-cta:hover::before {
+  left: 0;
+}
+
+.nav-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(196, 93, 34, 0.5);
+}
+
+.hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Use a dark gradient instead of the broken local image for now, or use a placeholder */
+  background: radial-gradient(circle at center, #2d1810, #1a1a1a);
+  overflow: hidden;
+  text-align: center;
+}
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0%, #1a1a1a 100%);
+  z-index: 1;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  max-width: 800px;
+  padding: 0 20px;
+}
+
+.logo-subtitle {
+  color: var(--primary-orange);
+  letter-spacing: 4px;
+  font-size: 14px;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+
+.logo-title {
+  font-size: 4rem;
+  /* 64px roughly */
+  font-weight: 900;
+  color: white;
+  margin: 0;
+  line-height: 1.1;
+  display: flex;
+  justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .logo-title {
+    font-size: 3rem;
+    flex-wrap: wrap;
+  }
+}
+
+.logo-tagline {
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 2px;
+  margin-top: 10px;
+  font-size: 1rem;
+}
+
+.hero-description {
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 30px;
+  font-size: 1.1rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.cta-button {
+  margin-top: 40px;
+  padding: 16px 40px;
+  background: var(--primary-orange);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.cta-button:hover {
+  transform: scale(1.05);
+}
+
+.services {
+  padding: 100px 0;
+  background: #1a1a1a;
+}
+
+.section-header {
+  text-align: center;
+  margin-bottom: 60px;
+}
+
+.section-title {
+  color: white;
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+}
+
+.section-subtitle {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 30px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.service-card-pro {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 30px;
+  border-radius: 20px;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+
+.service-card-pro:hover {
+  transform: translateY(-10px);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--primary-orange);
+}
+
+.service-icon-svg {
+  width: 40px;
+  height: 40px;
+  color: var(--primary-orange);
+  margin-bottom: 20px;
+}
+
+.service-content h3 {
+  color: white;
+  font-size: 1.5rem;
+  margin-bottom: 15px;
+}
+
+.service-content p {
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 20px;
+}
+
+.service-link {
+  color: var(--primary-orange);
+  text-decoration: none;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* --- RESPONSIVE / MOBILE -- */
+
+@media (max-width: 1024px) {
+  .logo-title {
+    font-size: 3rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .logo-title {
+    font-size: 2.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    line-height: 1.2;
+  }
+
+  .marketplace-hero-content h1 {
+    font-size: 2.5rem !important;
+  }
+
+  /* Stack columns on mobile */
+  .marketplace-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Make filter sidebar sticky/collapsible or simpler on mobile
+     For now, let's just make it flow normally or stick to top if needed
+  */
+  .marketplace-filter {
+    position: relative !important;
+    top: 0 !important;
+    margin-bottom: 20px;
+    width: 100%;
+  }
+
+  /* Navbar Adjustments */
+  .navbar {
+    padding: 15px 20px;
+    grid-template-columns: auto 1fr auto; 
+    gap: 10px;
+  }
+  
+  .navbar-center {
+    display: none; /* Hide desktop menu on mobile */
+  }
+
+  .mobile-menu-btn {
+    display: block !important; /* Show hamburger */
+  }
+}
+
+.mobile-menu-btn {
+  display: none;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 5px;
+}

@@ -1,0 +1,13 @@
+{
+  "name": "ngulikang-monorepo",
+  "private": true,
+  "scripts": {
+    "docker:up": "docker compose up",
+    "docker:down": "docker compose down",
+    "docker:build": "docker compose build",
+    "docker:restart": "docker compose restart",
+    "docker:logs": "docker compose logs -f",
+    "docker:clean": "docker compose down -v",
+    "seed": "docker compose exec backend npm run seed"
+  }
+}

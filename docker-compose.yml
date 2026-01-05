@@ -1,0 +1,166 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: ngulikang-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: ngulikang-backend
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - uploads:/app/uploads
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_ACCESS_EXPIRES: 15m
+      JWT_REFRESH_EXPIRES: 7d
+      UPLOAD_DIR: /app/uploads
+      CORS_ORIGINS: http://localhost
+      CHOKIDAR_USEPOLLING: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "if [ ! -d node_modules ]; then npm install; fi
+      && npm run prisma:generate
+      && if [ -d prisma/migrations ] && [ \"$(ls -A prisma/migrations)\" ]; then npx prisma migrate deploy; else npx prisma db push; fi
+      && npm run seed
+      && npm run dev"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5000/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1));"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web-user:
+    build:
+      context: ./Web-Ngulikang
+      dockerfile: Dockerfile.dev
+    container_name: ngulikang-web-user
+    volumes:
+      - ./Web-Ngulikang:/app
+      - /app/node_modules
+    environment:
+      VITE_API_URL: http://localhost/api
+      VITE_SOCKET_URL: http://localhost
+      VITE_APP_BASE_NAME: /admin
+      CHOKIDAR_USEPOLLING: "true"
+    depends_on:
+      backend:
+        condition: service_healthy
+    command: >
+      sh -c "if [ ! -d node_modules ]; then npm install; fi
+      && npm run dev -- --host 0.0.0.0 --port 5173 --strictPort"
+
+  panel-admin:
+    build:
+      context: ./Panel-Admin-Ngulikang
+      dockerfile: Dockerfile.dev
+    container_name: ngulikang-panel-admin
+    volumes:
+      - ./Panel-Admin-Ngulikang:/app
+      - /app/node_modules
+    environment:
+      VITE_API_URL: http://localhost/api
+      VITE_SOCKET_URL: http://localhost
+      CHOKIDAR_USEPOLLING: "true"
+    depends_on:
+      backend:
+        condition: service_healthy
+    command: >
+      sh -c "if [ ! -d node_modules ]; then npm install; fi
+      && npm run dev -- --host 0.0.0.0 --port 5174 --base /admin/ --strictPort"
+
+  panel-tukang:
+    build:
+      context: ./Ngulikang-Web-Panel
+      dockerfile: Dockerfile.dev
+    container_name: ngulikang-panel-tukang
+    volumes:
+      - ./Ngulikang-Web-Panel:/app
+      - /app/node_modules
+    environment:
+      REACT_APP_API_URL: http://localhost/api
+      REACT_APP_SOCKET_URL: http://localhost
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+      PUBLIC_URL: /tukang
+      WDS_SOCKET_PATH: /tukang/sockjs-node
+      WDS_SOCKET_PORT: "80"
+      HOST: 0.0.0.0
+      PORT: 3000
+    depends_on:
+      backend:
+        condition: service_healthy
+    command: >
+      sh -c "if [ ! -d node_modules ]; then npm install; fi
+      && npm start"
+    stdin_open: true
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: ngulikang-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - uploads:/uploads
+    depends_on:
+      web-user:
+        condition: service_started
+      panel-admin:
+        condition: service_started
+      panel-tukang:
+        condition: service_started
+      backend:
+        condition: service_healthy
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: ngulikang-pgadmin
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  adminer:
+    image: adminer:latest
+    container_name: ngulikang-adminer
+    ports:
+      - "8081:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+  uploads:
