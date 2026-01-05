@@ -88,6 +88,11 @@ const marketplaceApi = {
     getProduct: (id) => api.get(`/marketplace/products/${id}`)
 };
 
+const lamaranApi = {
+    createLamaran: (payload, config) => api.post('/lamaran', payload, config),
+    getMyLamaran: () => api.get('/lamaran/me')
+};
+
 const normalizePath = (url) => {
     if (url.startsWith('http')) {
         return url;
@@ -110,6 +115,7 @@ export {
     api,
     authApi,
     marketplaceApi,
+    lamaranApi,
     apiGet,
     getAccessToken,
     getRefreshToken,
