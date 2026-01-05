@@ -40,14 +40,6 @@ const Cart = ({ onNavigate }) => {
 
     const countSelected = selectedItems.length;
 
-    // Recommendations mock items
-    const recommendedItems = [
-        { id: 101, name: 'Semen Tigaroda 40kg', price: 58000, image: 'https://images.unsplash.com/photo-1518709779341-56cf8536f864?w=500&auto=format&fit=crop&q=60' },
-        { id: 102, name: 'Cat Tembok Putih 5kg', price: 125000, image: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=500&auto=format&fit=crop&q=60' },
-        { id: 103, name: 'Paku Beton 5cm', price: 15000, image: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=500&auto=format&fit=crop&q=60' },
-        { id: 104, name: 'Kuas Cat 3 Inch', price: 12000, image: 'https://images.unsplash.com/photo-1599694605008-5d6361996724?w=500&auto=format&fit=crop&q=60' },
-    ];
-
     // Local input state for the field
     const [inputCode, setInputCode] = useState('');
 
@@ -188,30 +180,6 @@ const Cart = ({ onNavigate }) => {
                                             </div>
                                         </div>
                                     </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* RECOMMENDATIONS */}
-                    {cartItems.length > 0 && (
-                        <div style={{ marginTop: '40px' }}>
-                            <h3 style={{ color: 'white', marginBottom: '20px', fontSize: '1.4rem', fontWeight: 'bold' }}>Rekomendasi untukmu</h3>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '20px' }}>
-                                {recommendedItems.map(rec => (
-                                    <motion.div
-                                        key={rec.id}
-                                        whileHover={{ y: -5 }}
-                                        style={{ background: '#18181b', border: '1px solid #27272a', borderRadius: '12px', padding: '12px', cursor: 'pointer' }}
-                                        onClick={() => showNotification("Detail item akan ditampilkan!", "info")}
-                                    >
-                                        <div style={{ height: '150px', borderRadius: '8px', overflow: 'hidden', marginBottom: '12px' }}>
-                                            <img src={rec.image} alt={rec.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                        </div>
-                                        <div style={{ fontSize: '0.9rem', fontWeight: '600', marginBottom: '4px', lineHeight: '1.3' }}>{rec.name}</div>
-                                        <div style={{ fontWeight: 'bold', color: 'white', marginBottom: '8px' }}>Rp{rec.price.toLocaleString('id-ID')}</div>
-                                        <button style={{ width: '100%', padding: '8px', border: '1px solid #FF8C42', color: '#FF8C42', background: 'transparent', borderRadius: '6px', fontWeight: 'bold', fontSize: '0.85rem' }}>+ Keranjang</button>
-                                    </motion.div>
                                 ))}
                             </div>
                         </div>

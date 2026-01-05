@@ -37,7 +37,9 @@ const protectedPages = new Set([
     'nguli-premium',
     'nguli-korporate',
     'bangun-baru',
-    'check-progress'
+    'check-progress',
+    'job-register',
+    'cek-status-lamaran'
 ]);
 
 
