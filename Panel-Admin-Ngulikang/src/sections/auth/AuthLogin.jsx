@@ -75,7 +75,7 @@ export default function AuthLogin({ isDemo = false }) {
             setAuthTokens(data);
             setStatus({ success: true });
             setSubmitting(false);
-            window.location.href = '/admin/dashboard/default';
+            window.location.href = `${basePath}/dashboard/default`;
           } catch (err) {
             const message = err.response?.data?.message || 'Login failed';
             setStatus({ success: false });

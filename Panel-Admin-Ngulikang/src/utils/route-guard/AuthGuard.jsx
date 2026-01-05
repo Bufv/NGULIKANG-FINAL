@@ -10,7 +10,7 @@ const AuthGuard = ({ children }) => {
     const { isLoggedIn } = useAuth(); // Assume we will create this hook or reading from localStorage directly
 
     if (!isLoggedIn) {
-        return <Navigate to="login" replace />;
+        return <Navigate to="/login" replace />;
     }
 
     return children ? children : <Outlet />;

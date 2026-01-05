@@ -81,6 +81,14 @@ model TukangProfile {
   verified    Boolean  @default(false)
   bankAccount String?
   saldo       Decimal  @default(0) @db.Decimal(12, 2)
+  priceHarian Decimal? @db.Decimal(12, 2)
+  priceBorongan Decimal? @db.Decimal(12, 2)
+  projectsCount Int      @default(0)
+  reviewCount   Int      @default(0)
+  isPopular     Boolean  @default(false)
+  photoUrl      String?
+  members       Json?
+  reviewSamples Json?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -113,7 +121,7 @@ model Product {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  cartItems Cart[]
+  cartItems     Cart[]
   productImages ProductImage[]
   productSpecs  ProductSpec[]
   reviews       ProductReview[]
@@ -219,12 +227,11 @@ model Gaji {
 model ChatRoom {
   id        String   @id @default(uuid())
   userId    String
-  tukangId  String?
-  type      String   @default("TUKANG")
+  tukangId  String
   createdAt DateTime @default(now())
 
   user   User @relation("ChatUser", fields: [userId], references: [id], onDelete: Cascade)
-  tukang User? @relation("ChatTukang", fields: [tukangId], references: [id], onDelete: Cascade)
+  tukang User @relation("ChatTukang", fields: [tukangId], references: [id], onDelete: Cascade)
   messages Message[]
 }
 

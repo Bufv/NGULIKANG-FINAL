@@ -5,6 +5,41 @@ const prisma = new PrismaClient();
 
 const hashPassword = async (password) => bcrypt.hash(password, 10);
 
+const TUKANG_PHOTOS = [
+  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
+  'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
+  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
+  'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
+  'https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
+];
+
+const buildMemberList = (leadName, skills) => {
+  const roles = skills.length ? skills : ['Tukang'];
+  const members = [{ name: leadName, role: roles[0] }];
+  if (roles.length > 1) {
+    members.push({ name: `${leadName} Crew`, role: roles[1] });
+  }
+  return members;
+};
+
+const buildReviewSamples = (leadName, rating) => {
+  const safeRating = Math.max(1, Math.min(5, Math.round(rating || 4)));
+  return [
+    {
+      name: leadName,
+      rating: safeRating,
+      date: '2 minggu lalu',
+      comment: 'Kerja rapi, komunikatif, dan selesai tepat waktu.'
+    },
+    {
+      name: 'Pelanggan',
+      rating: Math.max(3, safeRating - 1),
+      date: '1 bulan lalu',
+      comment: 'Hasil sesuai harapan, tukang profesional.'
+    }
+  ];
+};
+
 const PRODUCT_IMAGES = [
   'https://images.unsplash.com/photo-1518709779341-56cf8536f864?w=500&auto=format&fit=crop&q=60',
   'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=500&auto=format&fit=crop&q=60',
@@ -65,12 +100,18 @@ const seedUsers = async () => {
 
   const skillPool = ['Renovasi', 'Bangun Baru', 'Plumbing', 'Elektrikal', 'Interior', 'Cat'];
 
-  for (const tukang of tukangUsers) {
+  for (const [index, tukang] of tukangUsers.entries()) {
     const existing = await prisma.user.findUnique({ where: { email: tukang.email } });
     if (existing) {
       continue;
     }
     const skills = [skillPool[Math.floor(Math.random() * skillPool.length)], skillPool[Math.floor(Math.random() * skillPool.length)]];
+    const rating = 3 + Math.random() * 2;
+    const priceHarian = new Prisma.Decimal(150000 + index * 15000);
+    const priceBorongan = new Prisma.Decimal(3000000 + index * 250000);
+    const members = buildMemberList(tukang.name, skills);
+    const reviewSamples = buildReviewSamples(tukang.name, rating);
+    const reviewCount = 20 + index * 3;
     await prisma.user.create({
       data: {
         name: tukang.name,
@@ -81,9 +122,17 @@ const seedUsers = async () => {
           create: {
             skills,
             experience: `${2 + Math.floor(Math.random() * 8)} tahun`,
-            rating: 3 + Math.random() * 2,
+            rating,
             verified: true,
-            saldo: new Prisma.Decimal(500000 + Math.floor(Math.random() * 1500000))
+            saldo: new Prisma.Decimal(500000 + Math.floor(Math.random() * 1500000)),
+            priceHarian,
+            priceBorongan,
+            projectsCount: 10 + index * 2,
+            reviewCount,
+            isPopular: rating >= 4.7,
+            photoUrl: TUKANG_PHOTOS[index % TUKANG_PHOTOS.length],
+            members,
+            reviewSamples
           }
         }
       }
@@ -129,6 +178,49 @@ const seedLamaran = async (users) => {
   }));
 
   await prisma.lamaran.createMany({ data: lamaranData });
+};
+
+const seedTukangExtras = async () => {
+  const profiles = await prisma.tukangProfile.findMany({
+    include: { user: true }
+  });
+
+  for (const [index, profile] of profiles.entries()) {
+    const updates = {};
+    const rating = profile.rating || 4;
+
+    if (profile.priceHarian == null) {
+      updates.priceHarian = new Prisma.Decimal(150000 + index * 15000);
+    }
+    if (profile.priceBorongan == null) {
+      updates.priceBorongan = new Prisma.Decimal(3000000 + index * 250000);
+    }
+    if (!profile.projectsCount) {
+      updates.projectsCount = 10 + index * 2;
+    }
+    if (!profile.reviewCount) {
+      updates.reviewCount = 20 + index * 3;
+    }
+    if (profile.isPopular == null) {
+      updates.isPopular = rating >= 4.7;
+    }
+    if (!profile.photoUrl) {
+      updates.photoUrl = TUKANG_PHOTOS[index % TUKANG_PHOTOS.length];
+    }
+    if (profile.members == null) {
+      updates.members = buildMemberList(profile.user?.name || 'Tukang', profile.skills || []);
+    }
+    if (profile.reviewSamples == null) {
+      updates.reviewSamples = buildReviewSamples(profile.user?.name || 'Tukang', rating);
+    }
+
+    if (Object.keys(updates).length) {
+      await prisma.tukangProfile.update({
+        where: { id: profile.id },
+        data: updates
+      });
+    }
+  }
 };
 
 const seedProducts = async () => {
@@ -363,6 +455,8 @@ const seed = async () => {
 
   const { users, tukang } = await seedUsers();
   console.log('Seeded users, admins, and tukang.');
+  await seedTukangExtras();
+  console.log('Seeded tukang extras.');
   await seedLamaran(users);
   console.log('Seeded lamaran.');
   await seedProducts();

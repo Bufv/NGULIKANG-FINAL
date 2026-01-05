@@ -38,7 +38,8 @@ const emptyForm = {
     password: '',
     skills: '',
     rating: 0,
-    verified: false
+    verified: false,
+    members: []
 };
 
 function StatusCell({ verified }) {
@@ -72,7 +73,8 @@ export default function AkunTukang() {
                 email: user.email,
                 skills: user.tukangProfile?.skills || [],
                 rating: user.tukangProfile?.rating || 0,
-                verified: Boolean(user.tukangProfile?.verified)
+                verified: Boolean(user.tukangProfile?.verified),
+                members: Array.isArray(user.tukangProfile?.members) ? user.tukangProfile.members : []
             }));
             setRows(normalized);
         } catch (err) {
@@ -107,7 +109,13 @@ export default function AkunTukang() {
             tukangProfile: {
                 skills,
                 rating: Number(formData.rating) || 0,
-                verified: Boolean(formData.verified)
+                verified: Boolean(formData.verified),
+                members: formData.members
+                    .map((member) => ({
+                        name: member.name?.trim(),
+                        role: member.role?.trim()
+                    }))
+                    .filter((member) => member.name)
             }
         };
 
@@ -141,7 +149,8 @@ export default function AkunTukang() {
             password: '',
             skills: (row.skills || []).join(', '),
             rating: Number(row.rating) || 0,
-            verified: Boolean(row.verified)
+            verified: Boolean(row.verified),
+            members: Array.isArray(row.members) ? row.members : []
         });
         setOpen(true);
     };
@@ -166,6 +175,28 @@ export default function AkunTukang() {
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to verify tukang');
         }
+    };
+
+    const handleMemberChange = (index, field, value) => {
+        setFormData((prev) => {
+            const nextMembers = [...prev.members];
+            nextMembers[index] = { ...nextMembers[index], [field]: value };
+            return { ...prev, members: nextMembers };
+        });
+    };
+
+    const handleAddMember = () => {
+        setFormData((prev) => ({
+            ...prev,
+            members: [...prev.members, { name: '', role: '' }]
+        }));
+    };
+
+    const handleRemoveMember = (index) => {
+        setFormData((prev) => ({
+            ...prev,
+            members: prev.members.filter((_, i) => i !== index)
+        }));
     };
 
     return (
@@ -287,6 +318,40 @@ export default function AkunTukang() {
                             <option value="verified">Verified</option>
                             <option value="unverified">Unverified</option>
                         </TextField>
+                        <Box>
+                            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+                                <Typography component="legend">Members</Typography>
+                                <Button size="small" variant="outlined" startIcon={<PlusOutlined />} onClick={handleAddMember}>
+                                    Add Member
+                                </Button>
+                            </Stack>
+                            {formData.members.length === 0 && (
+                                <Typography variant="body2" color="text.secondary">
+                                    No members added.
+                                </Typography>
+                            )}
+                            <Stack spacing={1}>
+                                {formData.members.map((member, index) => (
+                                    <Stack key={index} direction="row" spacing={1} alignItems="center">
+                                        <TextField
+                                            label="Name"
+                                            value={member.name || ''}
+                                            onChange={(e) => handleMemberChange(index, 'name', e.target.value)}
+                                            fullWidth
+                                        />
+                                        <TextField
+                                            label="Role"
+                                            value={member.role || ''}
+                                            onChange={(e) => handleMemberChange(index, 'role', e.target.value)}
+                                            fullWidth
+                                        />
+                                        <IconButton color="error" onClick={() => handleRemoveMember(index)}>
+                                            <DeleteOutlined />
+                                        </IconButton>
+                                    </Stack>
+                                ))}
+                            </Stack>
+                        </Box>
                     </Stack>
                 </DialogContent>
                 <DialogActions>

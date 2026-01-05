@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api, getAccessToken } from '../../lib/api';
 
 const LiveChat = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -15,117 +14,22 @@ const LiveChat = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
-    const [socket, setSocket] = useState(null);
-    const [roomId, setRoomId] = useState(null);
-    const [user, setUser] = useState(null);
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
-
-    // 1. Connect to Socket.io and Load Chat when Open
     useEffect(() => {
-        // Decode user from token to know "who am I"
-        const token = getAccessToken();
-        let myId = null;
-        if (token) {
-            try {
-                const payload = JSON.parse(atob(token.split('.')[1]));
-                // Adjust this depending on your JWT structure. Usually 'sub' or 'id'
-                myId = payload.sub || payload.id;
-                setUser({ id: myId });
-            } catch (e) { }
-        }
+        scrollToBottom();
+    }, [messages, isOpen]);
 
-        if (isOpen && !socket) {
-            import('socket.io-client').then(({ io }) => {
-                const newSocket = io(socketUrl);
-                setSocket(newSocket);
-
-                newSocket.on('connect', () => {
-                    console.log('Connected to socket server');
-                });
-
-                newSocket.on('receive_message', (msg) => {
-                    setMessages(prev => {
-                        // 1. Avoid duplicates by ID
-                        if (prev.some(m => m.id === msg.id)) return prev;
-
-                        // 2. Avoid duplicates from Self (Optimistic UI already showed it)
-                        // If the message sender is ME, ignore it (since we added it optimistically)
-                        if (myId && msg.senderId === myId) return prev;
-
-                        return [...prev, {
-                            id: msg.id,
-                            text: msg.content,
-                            sender: msg.senderId === myId ? 'user' : 'agent',
-                            time: new Date(msg.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                        }];
-                    });
-                });
-
-                // Initialize Chat Room via API
-                initializeChat(newSocket);
-            });
-        }
-    }, [isOpen]);
-
-    const initializeChat = async (activeSocket) => {
-        const token = getAccessToken();
-        if (!token) {
-            setMessages(prev => [...prev, {
-                id: Date.now(),
-                text: 'Silakan login terlebih dahulu untuk memulai chat dengan admin. 🙏',
-                sender: 'agent',
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            }]);
-            return;
-        }
-
-        try {
-            // Use axios instance api to handle headers
-            const { data } = await api.post('/chat/admin/start');
-
-            if (data.id) {
-                setRoomId(data.id);
-                // Join socket room
-                activeSocket.emit('join_room', data.id);
-
-                // Fetch previous messages
-                fetchMessages(data.id);
-            }
-        } catch (error) {
-            console.error('Failed to init chat', error);
-        }
-    };
-
-    const fetchMessages = async (id) => {
-        try {
-            const { data } = await api.get(`/chat/${id}/messages`);
-
-            // Format messages
-            const formatted = data.map(m => ({
-                id: m.id,
-                text: m.content,
-                sender: m.sender.role === 'admin' ? 'agent' : 'user',
-                time: new Date(m.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            }));
-
-            // Merge with initial greeting if needed
-            setMessages(prev => {
-                // Keep the first welcome message if it exists and hasn't been added yet
-                const existingIds = new Set(prev.map(p => p.id));
-                const newMsgs = formatted.filter(f => !existingIds.has(f.id));
-                return [...prev, ...newMsgs];
-            });
-        } catch (e) { console.error(e); }
-    };
+    useEffect(() => {
+        const handleOpenChat = () => setIsOpen(true);
+        window.addEventListener('open-live-chat', handleOpenChat);
+        return () => window.removeEventListener('open-live-chat', handleOpenChat);
+    }, []);
 
     const handleSendMessage = (e) => {
         e.preventDefault();
         if (!inputValue.trim()) return;
 
-        // Optimistic UI update
-        const tempId = Date.now();
         const newUserMsg = {
-            id: tempId,
+            id: Date.now(),
             text: inputValue,
             sender: 'user',
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -133,23 +37,28 @@ const LiveChat = () => {
 
         setMessages(prev => [...prev, newUserMsg]);
         setInputValue('');
-        setIsTyping(false);
+        setIsTyping(true);
 
-        if (socket && roomId) {
-            const token = getAccessToken();
-            if (token) {
-                try {
-                    const payload = JSON.parse(atob(token.split('.')[1]));
-                    const senderId = payload.sub;
+        // Simulate bot response
+        setTimeout(() => {
+            const botResponses = [
+                "Terima kasih sudah menghubungi NguliKang! Tim kami akan segera membalas pesan Anda.",
+                "Bisa diceritakan lebih detail mengenai proyek yang Anda rencanakan?",
+                "Baik, kami carikan solusi terbaik untuk renovasi Anda.",
+                "Tunggu sebentar ya, saya sambungkan dengan CS kami."
+            ];
+            const randomResponse = botResponses[Math.floor(Math.random() * botResponses.length)];
 
-                    socket.emit('send_message', {
-                        roomId,
-                        senderId,
-                        content: newUserMsg.text
-                    });
-                } catch (e) { console.error("Token parse error", e); }
-            }
-        }
+            const newAgentMsg = {
+                id: Date.now() + 1,
+                text: randomResponse,
+                sender: 'agent',
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+
+            setMessages(prev => [...prev, newAgentMsg]);
+            setIsTyping(false);
+        }, 1500);
     };
 
     return (

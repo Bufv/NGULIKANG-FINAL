@@ -92,13 +92,21 @@ const NguliBorongan = ({ onNavigate }) => {
 
     const [teams, setTeams] = useState([]);
 
-    useEffect(() => {
-        let alive = true;
-        apiGet('/api/teams?service=borongan')
-            .then((data) => { if (alive) setTeams(data || []); })
-            .catch(console.error);
-        return () => { alive = false; };
-    }, []);
+useEffect(() => {
+  let alive = true;
+  apiGet('/api/teams?service=borongan')
+    .then((data) => { if (alive) setTeams(data?.data || []); })
+    .catch(console.error);
+  return () => { alive = false; };
+}, []);
+
+    const formatRating = (value) => {
+        const numberValue = Number(value);
+        if (!Number.isFinite(numberValue)) {
+            return '-';
+        }
+        return numberValue.toFixed(2);
+    };
 
 
     const commonInputBase = {
@@ -290,7 +298,7 @@ const NguliBorongan = ({ onNavigate }) => {
                                             <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'white' }}>{team.name}</h3>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
                                                 <span style={{ color: '#FFC107' }}>★</span>
-                                                <span style={{ color: '#eee', fontWeight: 'bold', fontSize: '0.9rem' }}>{team.rating}</span>
+                                                <span style={{ color: '#eee', fontWeight: 'bold', fontSize: '0.9rem' }}>{formatRating(team.rating)}</span>
                                                 <span style={{ color: '#666', fontSize: '0.8rem' }}>({team.reviews} Ulasan)</span>
                                             </div>
                                         </div>
@@ -1139,7 +1147,7 @@ const NguliBorongan = ({ onNavigate }) => {
                                     </h3>
                                     <div style={{ color: '#888', fontSize: '0.9rem', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         <span style={{ color: '#FFC107', fontSize: '1.1rem' }}>★</span>
-                                        <span style={{ color: 'white', fontWeight: 'bold' }}>{teams.find(t => t.id === viewingReviews)?.rating}</span>
+                                        <span style={{ color: 'white', fontWeight: 'bold' }}>{formatRating(teams.find(t => t.id === viewingReviews)?.rating)}</span>
                                         <span>• {teams.find(t => t.id === viewingReviews)?.reviews} Total Ulasan</span>
                                     </div>
                                 </div>

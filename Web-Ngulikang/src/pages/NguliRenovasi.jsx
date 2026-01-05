@@ -102,7 +102,7 @@ const NguliRenovasi = () => {
 useEffect(() => {
   let alive = true;
   apiGet('/api/renovation-workers')
-    .then((data) => { if (alive) setAvailableWorkers(data || []); })
+    .then((data) => { if (alive) setAvailableWorkers(data?.data || []); })
     .catch(console.error);
   return () => { alive = false; };
 }, []);
@@ -1033,4 +1033,3 @@ useEffect(() => {
 };
 
 export default NguliRenovasi;
-

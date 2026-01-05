@@ -142,18 +142,6 @@ const getPublicProduct = async (req, res, next) => {
   }
 };
 
-const getAdminProduct = async (req, res, next) => {
-  try {
-    const product = await fetchProductDetail(req.params.id);
-    if (!product) {
-      return res.status(404).json({ message: 'Product not found' });
-    }
-    return res.json({ data: buildProductDetailPayload(product) });
-  } catch (error) {
-    return next(error);
-  }
-};
-
 const listAdminProducts = async (req, res, next) => {
   try {
     const query = listSchema.parse(req.query);
@@ -184,6 +172,17 @@ const listAdminProducts = async (req, res, next) => {
   }
 };
 
+const getAdminProduct = async (req, res, next) => {
+  try {
+    const product = await fetchProductDetail(req.params.id);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+    return res.json({ data: buildProductDetailPayload(product) });
+  } catch (error) {
+    return next(error);
+  }
+};
 const createProduct = async (req, res, next) => {
   try {
     const payload = productSchema.parse(req.body);
@@ -282,31 +281,12 @@ const deleteProduct = async (req, res, next) => {
   }
 };
 
-const uploadProductImage = async (req, res, next) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ message: 'No file uploaded' });
-    }
-
-    const imageUrl = `/uploads/${req.file.filename}`;
-    const product = await prisma.product.update({
-      where: { id: req.params.id },
-      data: { imageUrl }
-    });
-
-    return res.json({ data: product });
-  } catch (error) {
-    return next(error);
-  }
-};
-
 module.exports = {
   listPublicProducts,
   getPublicProduct,
-  getAdminProduct,
   listAdminProducts,
+  getAdminProduct,
   createProduct,
   updateProduct,
-  deleteProduct,
-  uploadProductImage
+  deleteProduct
 };

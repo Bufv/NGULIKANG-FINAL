@@ -89,10 +89,18 @@ const NguliHarian = () => {
 useEffect(() => {
   let alive = true;
   apiGet('/api/teams?service=harian')
-    .then((data) => { if (alive) setTeams(data || []); })
+    .then((data) => { if (alive) setTeams(data?.data || []); })
     .catch(console.error);
   return () => { alive = false; };
 }, []);
+
+    const formatRating = (value) => {
+        const numberValue = Number(value);
+        if (!Number.isFinite(numberValue)) {
+            return '-';
+        }
+        return numberValue.toFixed(2);
+    };
 
 
     const calculateTotalCost = () => {
@@ -230,7 +238,7 @@ useEffect(() => {
                                             <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'white' }}>{team.name}</h3>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
                                                 <span style={{ color: '#FFC107' }}>★</span>
-                                                <span style={{ color: '#eee', fontWeight: 'bold', fontSize: '0.9rem' }}>{team.rating}</span>
+                                                <span style={{ color: '#eee', fontWeight: 'bold', fontSize: '0.9rem' }}>{formatRating(team.rating)}</span>
                                                 <span style={{ color: '#666', fontSize: '0.8rem' }}>({team.reviews} Ulasan)</span>
                                             </div>
                                         </div>

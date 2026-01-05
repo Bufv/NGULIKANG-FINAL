@@ -78,12 +78,12 @@ const register = async (req, res, next) => {
         tukangProfile:
           role === 'tukang'
             ? {
-              create: {
-                skills: [],
-                verified: false,
-                saldo: 0
+                create: {
+                  skills: [],
+                  verified: false,
+                  saldo: 0
+                }
               }
-            }
             : undefined
       }
     });
@@ -201,49 +201,10 @@ const me = async (req, res, next) => {
   }
 };
 
-const updateProfile = async (req, res, next) => {
-  try {
-    const userId = req.user.id;
-    const { name, phone, address } = req.body; // Add other fields as needed
-    const file = req.file;
-
-    const dataToUpdate = {};
-    if (name) dataToUpdate.name = name;
-    if (phone) dataToUpdate.phone = phone;
-    // User model might not have address, but let's check. 
-    // The previous schema view showed: id, email, password, name, phone, role, avatar, ...
-    // It does not show address. But maybe it's desired? 
-    // For now I'll stick to name and phone, and avatar.
-
-    if (file) {
-      // Construct public URL. 
-      // Assuming 'uploads' is served at '/uploads'
-      // The file path saved by multer is absolute or relative to CWD.
-      // We want the relative path from the static root.
-      // file.filename is just the name. 
-      // We saved to uploads/profiles/.
-      dataToUpdate.avatar = `/uploads/profiles/${file.filename}`;
-    }
-
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: dataToUpdate
-    });
-
-    return res.json({
-      message: 'Profile updated successfully',
-      user: sanitizeUser(updatedUser)
-    });
-  } catch (error) {
-    return next(error);
-  }
-};
-
 module.exports = {
   register,
   login,
   refresh,
   logout,
-  me,
-  updateProfile
+  me
 };

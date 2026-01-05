@@ -2,6 +2,22 @@ const { z } = require('zod');
 const prisma = require('../config/prisma');
 const { hashPassword } = require('../utils/password');
 
+const memberSchema = z
+  .object({
+    name: z.string().min(1),
+    role: z.string().optional()
+  })
+  .passthrough();
+
+const reviewSchema = z
+  .object({
+    name: z.string().min(1),
+    rating: z.number().optional(),
+    date: z.string().optional(),
+    comment: z.string().optional()
+  })
+  .passthrough();
+
 const createUserSchema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
@@ -16,7 +32,15 @@ const createUserSchema = z.object({
       rating: z.number().optional(),
       verified: z.boolean().optional(),
       bankAccount: z.string().optional(),
-      saldo: z.number().optional()
+      saldo: z.number().optional(),
+      priceHarian: z.coerce.number().optional(),
+      priceBorongan: z.coerce.number().optional(),
+      projectsCount: z.coerce.number().int().optional(),
+      reviewCount: z.coerce.number().int().optional(),
+      isPopular: z.boolean().optional(),
+      photoUrl: z.string().optional(),
+      members: z.array(memberSchema).optional(),
+      reviewSamples: z.array(reviewSchema).optional()
     })
     .optional()
 });
@@ -36,7 +60,15 @@ const updateUserSchema = z
         rating: z.number().optional(),
         verified: z.boolean().optional(),
         bankAccount: z.string().optional(),
-        saldo: z.number().optional()
+        saldo: z.number().optional(),
+        priceHarian: z.coerce.number().optional(),
+        priceBorongan: z.coerce.number().optional(),
+        projectsCount: z.coerce.number().int().optional(),
+        reviewCount: z.coerce.number().int().optional(),
+        isPopular: z.boolean().optional(),
+        photoUrl: z.string().optional(),
+        members: z.array(memberSchema).optional(),
+        reviewSamples: z.array(reviewSchema).optional()
       })
       .optional()
   })
@@ -107,7 +139,15 @@ const createUser = async (req, res, next) => {
                   rating: payload.tukangProfile?.rating || 0,
                   verified: payload.tukangProfile?.verified || false,
                   bankAccount: payload.tukangProfile?.bankAccount,
-                  saldo: payload.tukangProfile?.saldo || 0
+                  saldo: payload.tukangProfile?.saldo || 0,
+                  priceHarian: payload.tukangProfile?.priceHarian,
+                  priceBorongan: payload.tukangProfile?.priceBorongan,
+                  projectsCount: payload.tukangProfile?.projectsCount,
+                  reviewCount: payload.tukangProfile?.reviewCount,
+                  isPopular: payload.tukangProfile?.isPopular,
+                  photoUrl: payload.tukangProfile?.photoUrl,
+                  members: payload.tukangProfile?.members,
+                  reviewSamples: payload.tukangProfile?.reviewSamples
                 }
               }
             : undefined
@@ -155,7 +195,15 @@ const updateUser = async (req, res, next) => {
           rating: profileData.rating,
           verified: profileData.verified,
           bankAccount: profileData.bankAccount,
-          saldo: profileData.saldo
+          saldo: profileData.saldo,
+          priceHarian: profileData.priceHarian,
+          priceBorongan: profileData.priceBorongan,
+          projectsCount: profileData.projectsCount,
+          reviewCount: profileData.reviewCount,
+          isPopular: profileData.isPopular,
+          photoUrl: profileData.photoUrl,
+          members: profileData.members,
+          reviewSamples: profileData.reviewSamples
         },
         create: {
           userId,
@@ -164,7 +212,15 @@ const updateUser = async (req, res, next) => {
           rating: profileData.rating || 0,
           verified: profileData.verified || false,
           bankAccount: profileData.bankAccount,
-          saldo: profileData.saldo || 0
+          saldo: profileData.saldo || 0,
+          priceHarian: profileData.priceHarian,
+          priceBorongan: profileData.priceBorongan,
+          projectsCount: profileData.projectsCount,
+          reviewCount: profileData.reviewCount,
+          isPopular: profileData.isPopular,
+          photoUrl: profileData.photoUrl,
+          members: profileData.members,
+          reviewSamples: profileData.reviewSamples
         }
       });
     } else if (tukangProfile) {

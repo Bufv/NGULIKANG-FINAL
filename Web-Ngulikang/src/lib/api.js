@@ -98,9 +98,9 @@ const normalizePath = (url) => {
 const apiGet = (url, config) => {
     const normalized = normalizePath(url);
     if (normalized.startsWith('http')) {
-        return axios.get(normalized, config);
+        return axios.get(normalized, config).then((response) => response.data);
     }
-    return api.get(normalized, config);
+    return api.get(normalized, config).then((response) => response.data);
 };
 
 export {

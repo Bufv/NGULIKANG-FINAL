@@ -13,10 +13,8 @@ const {
   getAdminProduct,
   createProduct,
   updateProduct,
-  deleteProduct,
-  uploadProductImage
+  deleteProduct
 } = require('../controllers/productController');
-const upload = require('../middleware/upload');
 
 const router = express.Router();
 
@@ -34,6 +32,5 @@ router.get('/products/:id', getAdminProduct);
 router.post('/products', createProduct);
 router.put('/products/:id', updateProduct);
 router.delete('/products/:id', deleteProduct);
-router.post('/products/:id/upload', upload.single('file'), uploadProductImage);
 
 module.exports = router;

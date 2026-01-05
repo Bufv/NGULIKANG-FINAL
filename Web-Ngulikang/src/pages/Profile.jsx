@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Particles from '../components/ui/Particles';
 import { useUser } from '../context/UserContext';
 import { useNotification } from '../context/NotificationContext';
-import { api } from '../lib/api';
 
 // --- ICONS ---
 const Icons = {
@@ -22,7 +21,6 @@ const Profile = ({ onNavigate }) => {
     const { showNotification } = useNotification();
     const [activeTab, setActiveTab] = useState('profile');
     const [isEditing, setIsEditing] = useState(false);
-    const [selectedFile, setSelectedFile] = useState(null);
 
     // --- FORM STATES ---
     const [editForm, setEditForm] = useState({ ...user });
@@ -43,7 +41,6 @@ const Profile = ({ onNavigate }) => {
         setIsEditing(false); // Reset editing mode when switching tabs
         setEditForm({ ...user }); // Reset form
         setPasswordForm({ current: '', new: '', confirm: '' });
-        setSelectedFile(null);
     };
 
     const handleInputChange = (e) => {
@@ -58,39 +55,24 @@ const Profile = ({ onNavigate }) => {
                 showNotification("Ukuran file terlalu besar. Maksimal 5MB.", 'error');
                 return;
             }
-            setSelectedFile(file);
             const reader = new FileReader();
             reader.onloadend = () => {
                 setEditForm(prev => ({ ...prev, avatar: reader.result }));
-
-                if (!isEditing) setIsEditing(true);
+                // If we are NOT in full edit mode, we might want to save avatar immediately?
+                // The prompt implies a "proper" save flow. Let's make avatar change part of the "Edit Profile" flow or auto-save?
+                // For better UX, let's allow avatar direct update but via Save button in edit mode.
+                // Or simplified: Avatar click enters edit mode?
+                // Let's stick to standard flow: Change inputs -> Click Save.
+                if (!isEditing) setIsEditing(true); // Auto enter edit mode on photo change
             };
             reader.readAsDataURL(file);
         }
     };
 
-    const handleSaveProfile = async () => {
-        try {
-            const formData = new FormData();
-            formData.append('name', editForm.name);
-            formData.append('phone', editForm.phone || '');
-            formData.append('address', editForm.address || '');
-            if (selectedFile) {
-                formData.append('avatar', selectedFile);
-            }
-
-            const { data } = await api.put('/auth/profile', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
-
-            updateUser(data.user);
-            setIsEditing(false);
-            setSelectedFile(null);
-            showNotification('Profil berhasil diperbarui!', 'success');
-        } catch (error) {
-            console.error(error);
-            showNotification(error.response?.data?.message || 'Gagal memperbarui profil', 'error');
-        }
+    const handleSaveProfile = () => {
+        updateUser(editForm);
+        setIsEditing(false);
+        showNotification('Profil berhasil diperbarui!', 'success');
     };
 
     const handlePasswordChange = (e) => {
@@ -104,7 +86,9 @@ const Profile = ({ onNavigate }) => {
             return;
         }
 
-        const currentRealPassword = user.password || 'password123';
+        // Simulation check
+        // Note: user.password handles the "real" current password
+        const currentRealPassword = user.password || 'password123'; // Fallback for legacy data
 
         if (passwordForm.current !== currentRealPassword) {
             showNotification('Kata sandi saat ini salah!', 'error');
@@ -121,20 +105,12 @@ const Profile = ({ onNavigate }) => {
             return;
         }
 
+        // Save
         const updatedUser = { ...user, password: passwordForm.new };
         updateUser(updatedUser);
-        setEditForm(updatedUser);
+        setEditForm(updatedUser); // Sync local form
         setPasswordForm({ current: '', new: '', confirm: '' });
         showNotification('Kata sandi berhasil diubah!', 'success');
-    };
-
-    const getAvatarUrl = (url) => {
-        if (!url) return null;
-        if (url.startsWith('data:')) return url;
-        if (url.startsWith('http')) return url;
-
-        const baseUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
-        return `${baseUrl}${url}`;
     };
 
     return (
@@ -163,6 +139,7 @@ const Profile = ({ onNavigate }) => {
                                 active={activeTab === 'security'}
                                 onClick={() => handleTabChange('security')}
                             />
+                            {/* Placeholder for future features */}
                             <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '10px 0' }} />
                             <div style={{ padding: '10px 16px', fontSize: '0.8rem', color: '#71717a' }}>Versi Aplikasi 1.0.0</div>
                         </div>
@@ -198,11 +175,7 @@ const Profile = ({ onNavigate }) => {
                                             display: 'flex', alignItems: 'center', justifyContent: 'center'
                                         }}>
                                             {(isEditing ? editForm.avatar : user.avatar) ? (
-                                                <img
-                                                    src={getAvatarUrl(isEditing ? editForm.avatar : user.avatar)}
-                                                    alt="Profile"
-                                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                                />
+                                                <img src={isEditing ? editForm.avatar : user.avatar} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                             ) : (
                                                 <span style={{ fontSize: '2.5rem', color: '#71717a' }}>👤</span>
                                             )}
@@ -259,7 +232,7 @@ const Profile = ({ onNavigate }) => {
                                 {isEditing && (
                                     <div style={{ marginTop: '40px', display: 'flex', gap: '16px', justifyContent: 'flex-end' }}>
                                         <button
-                                            onClick={() => { setIsEditing(false); setEditForm({ ...user }); setSelectedFile(null); }}
+                                            onClick={() => { setIsEditing(false); setEditForm({ ...user }); }}
                                             style={{ padding: '12px 24px', borderRadius: '100px', background: 'transparent', border: '1px solid #3f3f46', color: '#e4e4e7', fontWeight: 'bold', cursor: 'pointer' }}
                                         >
                                             Batal
@@ -292,6 +265,7 @@ const Profile = ({ onNavigate }) => {
                                             </div>
                                         </div>
 
+                                        {/* Simple Email Update */}
                                         <div style={{ display: 'grid', gap: '12px' }}>
                                             <label style={{ fontSize: '0.9rem', color: '#a1a1aa' }}>Ganti Email Baru</label>
                                             <div style={{ display: 'flex', gap: '12px' }}>
@@ -374,6 +348,7 @@ const Profile = ({ onNavigate }) => {
                     </motion.div>
                 </div>
 
+                {/* --- CUSTOM STYLES INJECT --- */}
                 <style>{`
                     .profile-layout {
                         flex-direction: column;
