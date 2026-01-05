@@ -64,7 +64,6 @@ services:
     environment:
       VITE_API_URL: http://localhost/api
       VITE_SOCKET_URL: http://localhost
-      VITE_APP_BASE_NAME: /admin
       CHOKIDAR_USEPOLLING: "true"
     depends_on:
       backend:
@@ -84,6 +83,7 @@ services:
     environment:
       VITE_API_URL: http://localhost/api
       VITE_SOCKET_URL: http://localhost
+      VITE_APP_BASE_NAME: /admin
       CHOKIDAR_USEPOLLING: "true"
     depends_on:
       backend:

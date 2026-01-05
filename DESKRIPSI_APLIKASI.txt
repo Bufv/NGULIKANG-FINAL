@@ -1,0 +1,96 @@
+================================================================================
+                           DESKRIPSI APLIKASI NGULIKANG
+================================================================================
+
+1. PENDAHULUAN
+--------------------------------------------------------------------------------
+Ngulikang adalah sebuah platform web aplikasi modern yang dirancang untuk menghubungkan pengguna (pemilik rumah/proyek) dengan penyedia jasa konstruksi (tukang, mandor, kontraktor) secara mudah, transparan, dan efisien. Aplikasi ini bertujuan mendigitalkan proses pencarian tukang dan manajemen proyek konstruksi mulai dari skala kecil (perbaikan rumah) hingga skala besar (bangun baru & korporat).
+
+Dibangun dengan teknologi terkini (React.js, Node.js, PostgreSQL, dan Docker), Ngulikang menawarkan pengalaman pengguna yang cepat, responsif, dan kaya fitur interaktif.
+
+2. PENGGUNA (ROLES)
+--------------------------------------------------------------------------------
+Aplikasi ini melayani tiga jenis pengguna utama:
+   A. User (Pelanggan): Pengguna yang mencari jasa tukang, membeli material, atau berkonsultasi.
+   B. Tukang/Mitra: Pekerja atau tim konstruksi yang menawarkan jasa.
+   C. Admin: Pengelola sistem yang memantau transaksi, chat, dan manajemen konten via Panel Admin khusus.
+
+3. FITUR UTAMA & LAYANAN
+--------------------------------------------------------------------------------
+
+A. LAYANAN KONSTRUKSI (CORE SERVICES)
+   1. Nguli Harian
+      - Menyewa tukang untuk pekerjaan skala kecil dengan bayaran harian.
+      - Fitur filter keahlian tukang.
+      - Transparansi harga harian.
+
+   2. Nguli Borongan
+      - Layanan untuk proyek dengan sistem harga borongan (paket).
+      - Kalkulator Estimasi Biaya Otomatis: Pengguna dapat memasukkan jenis proyek, luas, dan budget untuk mendapatkan estimasi harga instan.
+      - Pemilihan Tim: Pengguna dapat melihat profil tim, rating, dan portofolio sebelum memilih.
+      - Tahapan: Pilih Tim -> Negosiasi -> Pembangunan.
+
+   3. Nguli Renovasi
+      - Layanan khusus untuk renovasi rumah (sebagian atau total).
+      - Formulir detail untuk spesifikasi renovasi.
+
+   4. Nguli Premium
+      - Layanan eksklusif dengan tenaga ahli bersertifikat dan jaminan kualitas lebih tinggi.
+      - Konsultasi prioritas.
+
+   5. Nguli Korporate
+      - Solusi konstruksi B2B untuk kebutuhan kantor, gudang, atau proyek komersial.
+
+   6. Bangun Baru
+      - Layanan *end-to-end* untuk membangun properti dari nol.
+
+B. MARKETPLACE MATERIAL (TOKO BAHAN BANGUNAN)
+   - Pengguna dapat membeli bahan bangunan langsung dari aplikasi.
+   - Fitur Keranjang Belanja (Cart) dan Checkout.
+   - Detail produk lengkap dengan gambar dan spesifikasi.
+
+C. FITUR INTERAKTIF & PENDUKUNG
+   1. Real-Time Chat (Live Chat)
+      - Komunikasi langsung antara User dengan Customer Service (Admin) atau Tukang.
+      - Didukung teknologi Socket.io untuk pesan instan tanpa refresh halaman.
+      - Indikator status pesan (terkirim/dibaca).
+
+   2. Order Tracker (Pelacakan Proyek)
+      - Pengguna dapat memantau progres pekerjaan secara real-time.
+      - Update status proyek (Pending, In Progress, Completed).
+      - Dokumentasi progres (foto hasil kerja) yang diupload oleh tukang/admin.
+
+   3. Check Status Lamaran & Daftar Kerja
+      - Fitur bagi pekerja konstruksi untuk melamar menjadi mitra Ngulikang.
+      - Halaman cek status lamaran untuk mengetahui progress rekrutmen.
+
+   4. Blog & Artikel
+      - Bagian edukasi berisi tips konstruksi, tren desain, dan panduan perawatan rumah.
+
+4. MANAJEMEN AKUN & PROFIL
+--------------------------------------------------------------------------------
+- Keamanan Akun: Sistem Login & Register aman menggunakan JWT (JSON Web Token) dengan enkripsi password.
+- Profil Pengguna:
+  - Ubah Foto Profil: Pengguna dapat mengupload foto profil sendiri yang tersimpan permanen di server.
+  - Edit Data Diri: Mengubah nama, nomor telepon, alamat, dan email.
+  - Ganti Password: Fitur keamanan untuk memperbarui kata sandi.
+
+5. PANEL ADMIN (DASHBOARD)
+--------------------------------------------------------------------------------
+Aplikasi dilengkapi dengan Panel Admin terpisah yang berfungsi untuk:
+- Memantau Chat Masuk (Live Chat Support) dan membalas pesan pengguna secara real-time.
+- Manajemen Pengguna (User & Tukang).
+- Manajemen Pesanan/Proyek.
+
+6. TEKNOLOGI YANG DIGUNAKAN (TECH STACK)
+--------------------------------------------------------------------------------
+- Frontend: React.js (Vite) untuk antarmuka yang cepat dan modern.
+- Backend: Node.js (Express) untuk logika server yang handal.
+- Database: PostgreSQL (dikelola dengan Prisma ORM) untuk penyimpanan data yang terstruktur dan aman.
+- Real-Time: Socket.io untuk fitur chat dan notifikasi.
+- Containerization: Docker & Docker Compose untuk kemudahan deployment dan isolasi lingkungan pengembangan.
+
+================================================================================
+Dibuat Oleh: Tim Pengembang Ngulikang
+Tanggal: 5 Januari 2026
+================================================================================

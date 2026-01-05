@@ -77,7 +77,10 @@ const authApi = {
     register: (payload) => api.post('/auth/register', payload),
     refresh: (refreshToken) => api.post('/auth/refresh', { refreshToken }),
     logout: (refreshToken) => api.post('/auth/logout', { refreshToken }),
-    me: () => api.get('/auth/me')
+    me: () => api.get('/auth/me'),
+    updateProfile: (formData) => api.put('/auth/profile', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    })
 };
 
 const marketplaceApi = {

@@ -6,11 +6,12 @@ exports.startAdminChat = async (req, res) => {
     try {
         const userId = req.user.id;
 
-        // Check if support chat exists
+        // Check if support chat exists and is OPEN
         let chatRoom = await prisma.chatRoom.findFirst({
             where: {
                 userId: userId,
-                type: 'ADMIN'
+                type: 'ADMIN',
+                status: 'OPEN'
             }
         });
 
@@ -18,7 +19,9 @@ exports.startAdminChat = async (req, res) => {
             chatRoom = await prisma.chatRoom.create({
                 data: {
                     userId,
-                    type: 'ADMIN'
+                    type: 'ADMIN',
+                    tukangId: null, // Explicitly null for admin chat
+                    status: 'OPEN'
                 }
             });
         }
@@ -30,21 +33,43 @@ exports.startAdminChat = async (req, res) => {
     }
 };
 
+// Close Chat
+exports.closeChat = async (req, res) => {
+    try {
+        const { roomId } = req.params;
+        const updatedRoom = await prisma.chatRoom.update({
+            where: { id: roomId },
+            data: { status: 'CLOSED' }
+        });
+        res.json(updatedRoom);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error closing chat' });
+    }
+};
+
 // Get Rooms List
 exports.getChatRooms = async (req, res) => {
     try {
         const userId = req.user.id;
         const { role } = req.user;
+        const { status } = req.query; // Get status from query params
+        console.log(`[getChatRooms] User: ${userId}, Role: ${role}, Status: ${status}`);
 
         let whereClause = {};
         if (role === 'admin') {
-            // Admin sees all support chats
-            whereClause = { type: 'ADMIN' };
+            // Admin sees ONLY support chats, filtered by status if provided
+            whereClause = {
+                type: 'ADMIN',
+                status: status ? status : 'OPEN' // Default to OPEN if no status provided
+            };
         } else if (role === 'tukang') {
             whereClause = { tukangId: req.user.id };
+            // Tukang logic could also be updated if needed
         } else {
-            // User sees their own chats
+            // User sees their own chats (both normal and admin)
             whereClause = { userId };
+            // User might want to see history too, but for now focusing on Admin req
         }
 
         const rooms = await prisma.chatRoom.findMany({
@@ -62,8 +87,7 @@ exports.getChatRooms = async (req, res) => {
                 },
             },
             orderBy: {
-                // sort by last message time if possible, otherwise createdAt
-                createdAt: 'desc'
+                updatedAt: 'desc'
             }
         });
 
