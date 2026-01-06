@@ -64,11 +64,16 @@ exports.getChatRooms = async (req, res) => {
                 status: status ? status : 'OPEN' // Default to OPEN if no status provided
             };
         } else if (role === 'tukang') {
+<<<<<<< HEAD
             // Tukang sees ONLY negotiation chats (NORMAL type) assigned to them
             whereClause = {
                 tukangId: req.user.id,
                 type: 'NORMAL' // Exclude ADMIN support chats
             };
+=======
+            whereClause = { tukangId: req.user.id };
+            // Tukang logic could also be updated if needed
+>>>>>>> b3fbbba0047a499f9e1f718a13bf5099cf26414d
         } else {
             // User sees their own chats (both normal and admin)
             whereClause = { userId };

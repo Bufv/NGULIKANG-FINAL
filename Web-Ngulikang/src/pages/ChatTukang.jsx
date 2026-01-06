@@ -4,7 +4,11 @@ import Particles from '../components/ui/Particles';
 import { api, getAccessToken } from '../lib/api';
 import { io } from 'socket.io-client';
 
+<<<<<<< HEAD
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+=======
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost';
+>>>>>>> b3fbbba0047a499f9e1f718a13bf5099cf26414d
 
 const ChatTukang = ({ onNavigate }) => {
     // --- STATE ---
@@ -45,6 +49,7 @@ const ChatTukang = ({ onNavigate }) => {
                 setMessages((prev) => {
                     const roomId = message.roomId;
                     const existingMessages = prev[roomId] || [];
+<<<<<<< HEAD
 
                     // Check for duplicates (real message already exists)
                     if (existingMessages.find(m => m.id === message.id && !m.id.startsWith('temp-'))) {
@@ -57,6 +62,14 @@ const ChatTukang = ({ onNavigate }) => {
                     return {
                         ...prev,
                         [roomId]: [...filteredMessages, formatMessage(message)]
+=======
+                    // Check for duplicates
+                    if (existingMessages.find(m => m.id === message.id)) return prev;
+
+                    return {
+                        ...prev,
+                        [roomId]: [...existingMessages, formatMessage(message)]
+>>>>>>> b3fbbba0047a499f9e1f718a13bf5099cf26414d
                     };
                 });
 
@@ -89,6 +102,7 @@ const ChatTukang = ({ onNavigate }) => {
                 // First get existing rooms
                 const res = await api.get('/chat/rooms');
 
+<<<<<<< HEAD
                 // Filter: Only show NORMAL chats (with tukang) that are still OPEN
                 // Exclude ADMIN chats and CLOSED chats (completed projects)
                 const filteredRooms = res.data.filter(room => {
@@ -99,19 +113,56 @@ const ChatTukang = ({ onNavigate }) => {
 
                 let formattedContacts = filteredRooms.map(room => {
                     const target = room.tukang;
+=======
+                let formattedContacts = res.data.map(room => {
+                    const isSupport = room.type === 'ADMIN';
+                    const target = isSupport ? { name: 'Customer Service', role: 'Support', avatar: 'https://i.pravatar.cc/150?img=68' } : room.tukang;
+>>>>>>> b3fbbba0047a499f9e1f718a13bf5099cf26414d
                     const lastMsg = room.messages?.[0];
                     return {
                         id: room.id,
                         name: target?.name || 'Unknown',
+<<<<<<< HEAD
                         role: target?.role || 'Tukang',
                         avatar: target?.avatar || `https://ui-avatars.com/api/?name=${target?.name || 'U'}&background=random`,
                         online: true, // Mock online status for now
                         unread: 0,
                         lastMsg: lastMsg ? lastMsg.content : 'Mulai percakapan',
+=======
+                        role: target?.role || (isSupport ? 'Customer Service' : 'Tukang'),
+                        avatar: target?.avatar || `https://ui-avatars.com/api/?name=${target?.name || 'U'}&background=random`,
+                        online: true, // Mock online status for now
+                        unread: 0,
+                        lastMsg: lastMsg ? lastMsg.content : (isSupport ? 'Hubungi CS jika ada kendala' : 'Mulai percakapan'),
+>>>>>>> b3fbbba0047a499f9e1f718a13bf5099cf26414d
                         type: room.type
                     };
                 });
 
+<<<<<<< HEAD
+=======
+                // Check if CS room exists, if not create option or fetch it
+                const csRoom = formattedContacts.find(c => c.type === 'ADMIN');
+                if (!csRoom) {
+                    // We can auto-create CS room or offer a button. Let's auto-create for better UX.
+                    try {
+                        const newCsRoom = await api.post('/chat/support');
+                        formattedContacts.push({
+                            id: newCsRoom.data.id,
+                            name: 'Customer Service',
+                            role: 'Support',
+                            avatar: 'https://i.pravatar.cc/150?img=68',
+                            online: true,
+                            unread: 0,
+                            lastMsg: 'Halo, ada yang bisa kami bantu?',
+                            type: 'ADMIN'
+                        });
+                    } catch (err) {
+                        console.error("Failed to create CS room", err);
+                    }
+                }
+
+>>>>>>> b3fbbba0047a499f9e1f718a13bf5099cf26414d
                 setContacts(formattedContacts);
                 if (formattedContacts.length > 0 && !activeContact) {
                     setActiveContact(formattedContacts[0].id);
@@ -162,6 +213,7 @@ const ChatTukang = ({ onNavigate }) => {
     }, [messages, activeContact]);
 
     // --- HELPERS ---
+<<<<<<< HEAD
     const formatMessage = (msg) => {
         // Debug logging
         console.log('[formatMessage] Raw message:', msg);
@@ -181,6 +233,15 @@ const ChatTukang = ({ onNavigate }) => {
         console.log('[formatMessage] Formatted:', formatted);
         return formatted;
     };
+=======
+    const formatMessage = (msg) => ({
+        id: msg.id,
+        text: msg.content,
+        sender: msg.sender.role === 'admin' ? 'agent' : (msg.sender.id === user?.id ? 'user' : 'agent'), // Simple logic: if me -> user, else agent
+        time: new Date(msg.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        role: msg.sender.role // keep role for debugging
+    });
+>>>>>>> b3fbbba0047a499f9e1f718a13bf5099cf26414d
 
     const isMyMessage = (msg) => {
         // With current formatMessage login:
@@ -196,6 +257,7 @@ const ChatTukang = ({ onNavigate }) => {
         e.preventDefault();
         if (!inputText.trim() || !activeContact || !socket) return;
 
+<<<<<<< HEAD
         const content = inputText.trim();
         const tempId = `temp-${Date.now()}`;
 
@@ -221,6 +283,17 @@ const ChatTukang = ({ onNavigate }) => {
         };
 
         socket.emit('send_message', data);
+=======
+        const data = {
+            roomId: activeContact,
+            content: inputText
+        };
+
+        socket.emit('send_message', data);
+        setInputText('');
+
+        // Optimistic update omitted for simplicity, relying on socket event
+>>>>>>> b3fbbba0047a499f9e1f718a13bf5099cf26414d
     };
 
     const currentContact = contacts.find(c => c.id === activeContact);
