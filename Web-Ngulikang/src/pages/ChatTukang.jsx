@@ -45,7 +45,6 @@ const ChatTukang = ({ onNavigate }) => {
                 setMessages((prev) => {
                     const roomId = message.roomId;
                     const existingMessages = prev[roomId] || [];
-
                     // Check for duplicates (real message already exists)
                     if (existingMessages.find(m => m.id === message.id && !m.id.startsWith('temp-'))) {
                         return prev;
@@ -88,7 +87,6 @@ const ChatTukang = ({ onNavigate }) => {
                 setLoading(true);
                 // First get existing rooms
                 const res = await api.get('/chat/rooms');
-
                 // Filter logic:
                 // We want ONLY NORMAL chats that are OPEN (chat with tukang).
                 // We DO NOT want ADMIN chats (Customer Service) - those belong in LiveChat only.
