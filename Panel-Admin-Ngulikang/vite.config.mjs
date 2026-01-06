@@ -13,7 +13,8 @@ export default defineConfig(({ mode }) => {
     server: {
       open: true,
       port: PORT,
-      host: true
+      host: true,
+      allowedHosts: ['ngulikang.site', 'www.ngulikang.site']
     },
     preview: {
       open: true,
