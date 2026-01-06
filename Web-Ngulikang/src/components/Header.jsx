@@ -526,9 +526,9 @@ const Header = ({ onNavigate, activePage }) => { // 1. Accept onNavigate prop
                         className="icon-btn"
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
-                        animate={isCartOpen ? { scale: 1.1, color: '#FF8C42' } : { scale: 1, color: 'white' }}
+                        animate={isCartOpen ? { scale: 1.1, color: '#FF8C42' } : { scale: 1, color: 'rgba(255, 255, 255, 0.9)' }}
                         transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                        style={{ position: 'relative' }}
+                        style={{ position: 'relative', color: 'rgba(255, 255, 255, 0.9)' }}
                         onClick={() => {
                             if (isCartOpen) {
                                 onNavigate('cart');
