@@ -1,84 +1,142 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { io } from 'socket.io-client';
+import { api, getAccessToken } from '../../lib/api';
 
-const NegotiationSection = ({ team, onProceed, initialOffer = 150000000 }) => {
-    const [messages, setMessages] = useState([
-        { id: 1, sender: 'team', text: 'Halo! Terima kasih telah memilih tim kami. Ada yang bisa kami bantu untuk detail proyeknya?', time: '10:00' },
-        { id: 2, sender: 'system', text: `Negosiasi dimulai. Estimasi awal: Rp ${initialOffer.toLocaleString('id-ID')}`, time: '10:00' }
-    ]);
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+
+const NegotiationSection = ({ team, onProceed, initialOffer = 150000000, roomId }) => {
+    const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState("");
-    const [initialEstimate] = useState(initialOffer);
     const [currentTotal, setCurrentTotal] = useState(initialOffer);
-
     const [negoAmount, setNegoAmount] = useState("");
+    const messagesEndRef = useRef(null);
+    const [socket, setSocket] = useState(null);
 
-    const handleSendMessage = () => {
-        if (newMessage.trim()) {
-            setMessages([...messages, {
-                id: Date.now(),
-                sender: 'user',
-                text: newMessage,
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            }]);
-            setNewMessage("");
+    // Fetch messages and setup socket - EXACTLY like ChatTukang.jsx
+    useEffect(() => {
+        if (!roomId) return;
 
-            // Simulate auto-reply if needed
-            setTimeout(() => {
-                setMessages(prev => [...prev, {
-                    id: Date.now() + 1,
-                    sender: 'team',
-                    text: 'Terima kasih atas pesannya. Kami akan segera merespons.',
-                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                }]);
-            }, 2000);
+        const fetchMessages = async () => {
+            try {
+                const res = await api.get(`/negotiation/messages/${roomId}`);
+                const formatted = res.data.map(msg => ({
+                    id: msg.id,
+                    text: msg.content,
+                    sender: msg.sender.role === 'tukang' ? 'team' : 'user',
+                    time: new Date(msg.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                }));
+                setMessages(formatted);
+            } catch (error) {
+                console.error('Error fetching messages:', error);
+            }
+        };
+
+        fetchMessages();
+
+        const token = getAccessToken();
+        if (token) {
+            const newSocket = io(SOCKET_URL, {
+                auth: { token: `Bearer ${token}` },
+                transports: ['websocket', 'polling']
+            });
+
+            newSocket.on('connect', () => {
+                console.log('Socket connected');
+                newSocket.emit('join_room', roomId);
+            });
+
+            newSocket.on('receive_message', (message) => {
+                const formattedMsg = {
+                    id: message.id,
+                    text: message.content,
+                    sender: message.sender.role === 'tukang' ? 'team' : 'user',
+                    time: new Date(message.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                };
+
+                setMessages(prev => {
+                    if (prev.find(m => m.id === message.id)) return prev;
+                    return [...prev, formattedMsg];
+                });
+            });
+
+            setSocket(newSocket);
+
+            return () => {
+                newSocket.disconnect();
+            };
         }
+    }, [roomId]);
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages]);
+
+    const handleSendMessage = (e) => {
+        e.preventDefault();
+        if (!newMessage.trim() || !socket) return;
+
+        const data = {
+            roomId: roomId,
+            content: newMessage
+        };
+
+        socket.emit('send_message', data);
+        setNewMessage('');
     };
 
-    const handleSubmitNego = () => {
-        if (!negoAmount) return;
+    const handleSubmitNego = async () => {
+        if (!negoAmount || !roomId) return;
 
         let numericAmount = parseInt(negoAmount.replace(/\./g, ''));
         if (isNaN(numericAmount)) return;
 
-        // Auto-correct: If value is small (< 1000), assume it's in Millions
         if (numericAmount < 1000) {
             numericAmount = numericAmount * 1000000;
         }
 
-        // 1. Add User Message
-        const userMsg = {
-            id: Date.now(),
-            sender: 'user',
-            text: `Saya mengajukan penawaran baru sebesar Rp ${numericAmount.toLocaleString('id-ID')}`,
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        };
+        const negoText = `Saya mengajukan penawaran baru sebesar Rp ${numericAmount.toLocaleString('id-ID')}`;
 
-        // 2. Set new Total immediately (or could wait for approval)
-        setCurrentTotal(numericAmount);
-        setNegoAmount("");
-
-        // 3. Add System Response
-        const systemMsg = {
-            id: Date.now() + 1,
-            sender: 'system',
-            text: `Penawaran baru diterima: Rp ${numericAmount.toLocaleString('id-ID')}. Menunggu konfirmasi tim.`,
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        };
-
-        setMessages(prev => [...prev, userMsg, systemMsg]);
+        if (socket) {
+            socket.emit('send_message', {
+                roomId: roomId,
+                content: negoText
+            });
+            setCurrentTotal(numericAmount);
+            setNegoAmount("");
+        }
     };
 
     const handleNegoChange = (e) => {
-        // Remove non-numeric characters
         const rawValue = e.target.value.replace(/\D/g, '');
         if (rawValue === "") {
             setNegoAmount("");
             return;
         }
-        // Format with dots
         const formattedValue = new Intl.NumberFormat('id-ID').format(rawValue);
         setNegoAmount(formattedValue);
     };
+
+    if (!roomId) {
+        return (
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{
+                    background: 'rgba(255, 0, 0, 0.1)',
+                    border: '2px solid rgba(255, 0, 0, 0.3)',
+                    borderRadius: '24px',
+                    padding: '40px',
+                    textAlign: 'center'
+                }}
+            >
+                <h2 style={{ color: '#ff5555', marginBottom: '16px' }}>⚠️ Error: Room ID Tidak Ditemukan</h2>
+                <p style={{ color: '#ccc', marginBottom: '20px' }}>
+                    Chat room belum dibuat. Silakan kembali ke langkah sebelumnya dan coba lagi.
+                </p>
+            </motion.div>
+        );
+    }
 
     return (
         <motion.div
@@ -105,51 +163,49 @@ const NegotiationSection = ({ team, onProceed, initialOffer = 150000000 }) => {
                     </div>
                     <div>
                         <h3 style={{ margin: 0, color: 'white', fontSize: '1.1rem' }}>{team?.name}</h3>
-                        <div style={{ color: '#888', fontSize: '0.85rem' }}>Sedang Online • Biasanya membalas dalam 5 menit</div>
+                        <div style={{ color: '#888', fontSize: '0.85rem' }}>Sedang Online</div>
                     </div>
                 </div>
 
                 {/* Messages Area */}
                 <div style={{ flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    {messages.length === 0 && <div style={{ textAlign: 'center', color: '#666', marginTop: '20px' }}>Mulai negosiasi...</div>}
                     {messages.map((msg) => (
                         <div key={msg.id} style={{ alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start', maxWidth: '80%' }}>
-                            {msg.sender === 'system' ? (
-                                <div style={{ textAlign: 'center', fontSize: '0.8rem', color: '#888', margin: '10px 0', background: 'rgba(255,255,255,0.05)', padding: '5px 15px', borderRadius: '100px', alignSelf: 'center', width: 'fit-content', margin: '0 auto' }}> {msg.text} </div>
-                            ) : (
-                                <div style={{
-                                    background: msg.sender === 'user' ? 'linear-gradient(135deg, #FF8C42, #F76B1C)' : 'rgba(255,255,255,0.1)',
-                                    color: 'white',
-                                    padding: '12px 18px',
-                                    borderRadius: msg.sender === 'user' ? '20px 20px 0 20px' : '20px 20px 20px 0',
-                                    fontSize: '0.95rem',
-                                    boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
-                                }}>
-                                    {msg.text}
-                                </div>
-                            )}
-                            {msg.sender !== 'system' && <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '4px', textAlign: msg.sender === 'user' ? 'right' : 'left' }}>{msg.time}</div>}
+                            <div style={{
+                                background: msg.sender === 'user' ? 'linear-gradient(135deg, #FF8C42, #F76B1C)' : 'rgba(255,255,255,0.1)',
+                                color: 'white',
+                                padding: '12px 18px',
+                                borderRadius: msg.sender === 'user' ? '20px 20px 0 20px' : '20px 20px 20px 0',
+                                fontSize: '0.95rem',
+                                boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                                whiteSpace: 'pre-wrap'
+                            }}>
+                                {msg.text}
+                            </div>
+                            <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '4px', textAlign: msg.sender === 'user' ? 'right' : 'left' }}>{msg.time}</div>
                         </div>
                     ))}
+                    <div ref={messagesEndRef} />
                 </div>
 
                 {/* Input Area */}
                 <div style={{ padding: '20px', background: 'rgba(255,255,255,0.02)', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-                    <div style={{ display: 'flex', gap: '10px' }}>
+                    <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '10px' }}>
                         <input
                             type="text"
-                            placeholder="Ketik pesan untuk negosiasi..."
+                            placeholder="Ketik pesan..."
                             value={newMessage}
                             onChange={(e) => setNewMessage(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                             style={{ flex: 1, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '15px', color: 'white', outline: 'none' }}
                         />
                         <button
-                            onClick={handleSendMessage}
+                            type="submit"
                             style={{ width: '50px', height: '50px', borderRadius: '12px', background: '#FF8C42', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                         >
                             ➤
                         </button>
-                    </div>
+                    </form>
                 </div>
             </div>
 

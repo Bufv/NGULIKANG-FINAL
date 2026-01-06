@@ -4,7 +4,88 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Particles from '../components/ui/Particles';
 import PaymentSection from '../components/pembayaran/PaymentSection';
 import NegotiationSection from '../components/pembayaran/NegotiationSection';
-import { apiGet } from '../lib/api';
+import { api, apiGet } from '../lib/api';
+
+const teams = [
+    {
+        id: 1,
+        name: "Tim Pak Budi",
+        image: "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
+        rating: 4.8,
+        reviews: 120,
+        projects: 45,
+        experience: "10 Tahun",
+        isPopular: false,
+        members: [
+            { name: "Budi", role: "Mandor" },
+            { name: "Asep", role: "Tukang" },
+            { name: "Ujang", role: "Tukang" }
+        ],
+        reviewsList: [
+            { user: "Andi", rating: 5, comment: "Kerja cepat dan rapi!", image: null },
+            { user: "Siti", rating: 4, comment: "Bagus, tapi agak telat dikit.", image: null }
+        ]
+    },
+    {
+        id: 2,
+        name: "Tim Mas Yono",
+        image: "https://images.unsplash.com/photo-1513467535987-fd81bc7d7cd3?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
+        rating: 4.9,
+        reviews: 200,
+        projects: 60,
+        experience: "12 Tahun",
+        isPopular: true,
+        members: [
+            { name: "Yono", role: "Mandor" },
+            { name: "Dedi", role: "Tukang" },
+            { name: "Rudi", role: "Kenek" }
+        ],
+        reviewsList: [
+            { user: "Budi S", rating: 5, comment: "Sangat profesional!", image: null }
+        ]
+    },
+    {
+        id: 3,
+        name: "Tim Pak Slamet",
+        image: "https://images.unsplash.com/photo-1503387762-592deb58ef4e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
+        rating: 4.7,
+        reviews: 95,
+        projects: 30,
+        experience: "8 Tahun",
+        isPopular: false,
+        members: [
+            { name: "Slamet", role: "Mandor" },
+            { name: "Joko", role: "Tukang" }
+        ],
+        reviewsList: []
+    }
+];
+
+// Helper for formatting
+const formatRating = (rating) => (rating ? rating.toFixed(1) : "0.0");
+
+const dropdownStyle = {
+    padding: '16px',
+    background: 'rgba(255, 255, 255, 0.05)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '12px',
+    color: 'white',
+    cursor: 'pointer',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+};
+
+const inputStyle = {
+    width: '100%',
+    padding: '16px',
+    background: 'rgba(255, 255, 255, 0.05)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '12px',
+    color: 'white',
+    outline: 'none'
+};
+
 
 const NguliBorongan = ({ onNavigate }) => {
     const [selectedPackage, setSelectedPackage] = useState(1); // Default ke tengah (id 2) atau 1
@@ -25,6 +106,7 @@ const NguliBorongan = ({ onNavigate }) => {
     const [viewDate, setViewDate] = useState(new Date());
 
     // File Upload State
+    const fileInputRef = useRef(null);
     const [uploadedFiles, setUploadedFiles] = useState([]);
     const [zoomedImage, setZoomedImage] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -33,10 +115,31 @@ const NguliBorongan = ({ onNavigate }) => {
     const [calculatedCost, setCalculatedCost] = useState(0);
     const [finalAgreedPrice, setFinalAgreedPrice] = useState(0);
 
+    // Chat Room State
+    const [chatRoomId, setChatRoomId] = useState(null);
+    const [orderId, setOrderId] = useState(null);
+
     // Alert Modal State
     const [showAlert, setShowAlert] = useState(false);
     const [alertMessage, setAlertMessage] = useState('');
     const [alertTitle, setAlertTitle] = useState('');
+
+    // DB Tukangs State
+    const [dbTukangs, setDbTukangs] = useState([]);
+
+    useEffect(() => {
+        const fetchTukangs = async () => {
+            try {
+                const data = await apiGet('/negotiation/tukangs');
+                if (Array.isArray(data)) {
+                    setDbTukangs(data);
+                }
+            } catch (error) {
+                console.error("Failed to fetch available tukangs:", error);
+            }
+        };
+        fetchTukangs();
+    }, []);
 
     // Step & Negotiation State
     const [currentStep, setCurrentStep] = useState(() => {
@@ -44,131 +147,71 @@ const NguliBorongan = ({ onNavigate }) => {
         return parseInt(params.get('step')) || 1;
     });
 
-    // Handle Browser Back Button & Initial Load
-    useEffect(() => {
-        const handlePopState = () => {
-            const params = new URLSearchParams(window.location.search);
-            const step = parseInt(params.get('step')) || 1;
-            setCurrentStep(step);
-        };
-
-        window.addEventListener('popstate', handlePopState);
-        return () => window.removeEventListener('popstate', handlePopState);
-    }, []);
-
-    const navigateToStep = (step) => {
-        const url = new URL(window.location);
-        url.searchParams.set('step', step);
-        window.history.pushState({}, '', url);
-        setCurrentStep(step);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-
-    const fileInputRef = useRef(null);
-
     const handleFileChange = (e) => {
-        if (e.target.files && e.target.files.length > 0) {
-            const newFiles = Array.from(e.target.files);
-            // Limit to 5 files total
-            if (uploadedFiles.length + newFiles.length > 5) {
-                if (uploadedFiles.length + newFiles.length > 5) {
-                    setAlertTitle('Batas Foto Tercapai');
-                    setAlertMessage("Maksimal 5 foto yang diperbolehkan untuk diupload.");
-                    setShowAlert(true);
-                    return;
-                }
-            }
-            // Generate preview URLs
-            const filesWithPreviews = newFiles.map(file => Object.assign(file, {
-                preview: URL.createObjectURL(file)
-            }));
-            setUploadedFiles(prev => [...prev, ...filesWithPreviews]);
+        const files = Array.from(e.target.files);
+        if (files.length + uploadedFiles.length > 5) {
+            setAlertTitle('Terlalu Banyak Foto');
+            setAlertMessage('Maksimal 5 foto yang dapat diunggah.');
+            setShowAlert(true);
+            return;
         }
+
+        const newFiles = files.map(file => Object.assign(file, {
+            preview: URL.createObjectURL(file)
+        }));
+
+        setUploadedFiles(prev => [...prev, ...newFiles]);
     };
 
     const removeFile = (index) => {
-        setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+        setUploadedFiles(prev => {
+            const newFiles = [...prev];
+            URL.revokeObjectURL(newFiles[index].preview);
+            newFiles.splice(index, 1);
+            return newFiles;
+        });
     };
 
-    const [teams, setTeams] = useState([]);
-
-useEffect(() => {
-  let alive = true;
-  apiGet('/api/teams?service=borongan')
-    .then((data) => { if (alive) setTeams(data?.data || []); })
-    .catch(console.error);
-  return () => { alive = false; };
-}, []);
-
-    const formatRating = (value) => {
-        const numberValue = Number(value);
-        if (!Number.isFinite(numberValue)) {
-            return '-';
-        }
-        return numberValue.toFixed(2);
-    };
-
-
-    const commonInputBase = {
-        width: '100%',
-        height: '52px',
-        background: 'rgba(255, 255, 255, 0.05)',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        borderRadius: '12px',
-        color: 'white',
-        fontSize: '1rem',
-        boxSizing: 'border-box',
-        transition: 'all 0.2s ease',
-        outline: 'none'
-    };
-
-    const inputStyle = {
-        ...commonInputBase,
-        padding: '0 16px'
-    };
-
-    const dropdownStyle = {
-        ...commonInputBase,
-        padding: '0 16px',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between'
-    };
-
-    // --- COST CALCULATION LOGIC ---
     const calculateEstimatedCost = () => {
-        let baseCost = 0;
-        // Base cost from budget range (taking average/conservative estimate)
-        switch (budgetRange) {
-            case "Kurang dari 50 Juta": baseCost = 35000000; break;
-            case "50 Juta - 100 Juta": baseCost = 75000000; break;
-            case "100 Juta - 300 Juta": baseCost = 185000000; break;
-            case "300 Juta - 500 Juta": baseCost = 400000000; break;
-            case "Di atas 500 Juta": baseCost = 750000000; break;
-            default: baseCost = 0;
-        }
-
-        // Multipliers based on Project Type
-        let multiplier = 1.0;
-        switch (projectType) {
-            case "Finishing & Penyelesaian (Cat, Keramik, Plafon)": multiplier = 0.8; break;
-            case "Perbaikan Atap / Atasi Bocor": multiplier = 0.6; break;
-            case "Pekerjaan Struktural (Cor Dak, Fondasi)": multiplier = 1.2; break; // More expensive
-            case "Instalasi Sistem (Listrik, Plumbing, AC)": multiplier = 0.7; break;
-            case "Perluasan / Tambah Ruangan": multiplier = 1.1; break;
-            case "Upgrade Fasad / Eksterior Rumah": multiplier = 0.9; break;
-            case "Lainnya": multiplier = 1.0; break;
-            default: multiplier = 1.0;
-        }
-
-        // If baseCost is 0 (not selected), return 0
-        if (baseCost === 0) return 0;
-
-        return Math.round(baseCost * multiplier);
+        // Simple logic simulation
+        let base = 10000000;
+        if (budgetRange === "Kurang dari 50 Juta") base = 25000000;
+        if (budgetRange === "50 Juta - 100 Juta") base = 75000000;
+        if (budgetRange === "100 Juta - 300 Juta") base = 200000000;
+        if (budgetRange === "300 Juta - 500 Juta") base = 400000000;
+        if (budgetRange === "Di atas 500 Juta") base = 750000000;
+        return base;
     };
 
-    const handleProceedToStep2 = () => {
+    // Sync DB Tukangs with UI Cards
+    const [displayTeams, setDisplayTeams] = useState(teams);
+
+    useEffect(() => {
+        if (dbTukangs.length > 0) {
+            // Map ALL DB tukangs to display cards (not just 3)
+            const updatedTeams = dbTukangs.map((realTukang, index) => {
+                // Use existing dummy team data as template, or create new
+                const templateTeam = teams[index % teams.length] || teams[0];
+
+                return {
+                    ...templateTeam,
+                    id: index + 1, // Sequential ID for UI
+                    name: realTukang.name || `Tukang ${index + 1}`,
+                    image: (realTukang.avatar && realTukang.avatar.startsWith('http')) ? realTukang.avatar : templateTeam.image,
+                    realId: realTukang.id, // Real UUID from DB
+                    isAvailable: realTukang.isAvailable, // From backend
+                    chatStatus: realTukang.chatStatus, // OPEN, CLOSED, or null
+                    // Override popular badge - show as "ready" if available and was previously closed
+                    isPopular: realTukang.isAvailable && realTukang.chatStatus === 'CLOSED'
+                };
+            });
+            setDisplayTeams(updatedTeams);
+            console.log('[NguliBorongan] Updated teams:', updatedTeams.length, 'teams');
+            console.log('[NguliBorongan] Available teams:', updatedTeams.filter(t => t.isAvailable).length);
+        }
+    }, [dbTukangs]);
+
+    const handleProceedToStep2 = async () => {
         // Validate Inputs
         if (!projectType || !propertyType || !budgetRange) {
             setAlertTitle('Data Belum Lengkap!');
@@ -178,14 +221,103 @@ useEffect(() => {
         }
 
         const cost = calculateEstimatedCost();
+
         setCalculatedCost(cost);
 
         setIsSubmitting(true);
-        // Simulate loading
-        setTimeout(() => {
+
+        try {
+            // Determine Real Tukang ID from fetched DB list
+            let realTukangId = selectedPackage; // Fallback
+            if (dbTukangs.length > 0) {
+                // Map based on index (selectedPackage is 1, 2, 3...)
+                // We use module to safely wrap around if we have fewer real tukangs than dummy options
+                const index = (selectedPackage - 1) % dbTukangs.length;
+                if (dbTukangs[index]) {
+                    realTukangId = dbTukangs[index].id;
+                }
+            }
+
+            // Call API to start negotiation
+            const payload = {
+                tukangId: realTukangId, // Uses real DB UUID
+                projectType: projectType === 'Lainnya' ? customProjectType : projectType,
+                propertyType,
+                budget: budgetRange,
+                location: 'Jl. Mawar No. 123 (Dummy)', // Input not saved in state yet, fetch from input if needed later
+                startDate: selectedDate ? selectedDate.toISOString() : new Date().toISOString()
+            };
+
+            console.log('[NguliBorongan] Starting negotiation with payload:', payload);
+            const response = await api.post('/negotiation/start', payload);
+            console.log('[NguliBorongan] Negotiation start response:', response.data);
+            console.log('[NguliBorongan] Full response object:', JSON.stringify(response.data, null, 2));
+
+            // Handle different response formats
+            let roomId = null;
+            let responseOrderId = null;
+
+            if (response.data.chatRoomId) {
+                roomId = response.data.chatRoomId;
+                responseOrderId = response.data.orderId;
+                console.log('[NguliBorongan] Extracted from chatRoomId');
+            } else if (response.data.chatRoom?.id) {
+                roomId = response.data.chatRoom.id;
+                console.log('[NguliBorongan] Extracted from chatRoom.id');
+            } else if (response.data.id) {
+                roomId = response.data.id;
+                console.log('[NguliBorongan] Extracted from id');
+            }
+
+            console.log('[NguliBorongan] Extracted roomId:', roomId);
+            console.log('[NguliBorongan] Extracted orderId:', responseOrderId);
+            console.log('[NguliBorongan] roomId type:', typeof roomId);
+            console.log('[NguliBorongan] roomId length:', roomId ? roomId.length : 0);
+
+            // Validate UUID format (basic check)
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            if (roomId && !uuidRegex.test(roomId)) {
+                console.error('[NguliBorongan] Invalid UUID format:', roomId);
+                setAlertTitle('Error');
+                setAlertMessage('Format Room ID tidak valid. Silakan coba lagi.');
+                setShowAlert(true);
+                setIsSubmitting(false);
+                return;
+            }
+
+            if (roomId) {
+                console.log('[NguliBorongan] Setting chatRoomId to:', roomId);
+                setChatRoomId(roomId);
+                if (responseOrderId) setOrderId(responseOrderId);
+
+                // Verify it was set correctly
+                setTimeout(() => {
+                    console.log('[NguliBorongan] Verification - chatRoomId state should be:', roomId);
+                    console.log('[NguliBorongan] Verification - orderId state should be:', responseOrderId);
+                }, 100);
+            } else {
+                console.error('[NguliBorongan] No roomId found in response!');
+                setAlertTitle('Error');
+                setAlertMessage('Gagal membuat room chat. Silakan coba lagi.');
+                setShowAlert(true);
+                setIsSubmitting(false);
+                return;
+            }
+
+            // Simulate loading a bit for effect
+            setTimeout(() => {
+                setIsSubmitting(false);
+                setShowSuccessModal(true);
+            }, 1000);
+
+        } catch (error) {
+            console.error("[NguliBorongan] Error starting negotiation:", error);
+            console.error("[NguliBorongan] Error response:", error.response?.data);
             setIsSubmitting(false);
-            setShowSuccessModal(true);
-        }, 2000);
+            setAlertTitle('Gagal Memulai');
+            setAlertMessage("Terjadi kesalahan saat menghubungi server. Pastikan Anda sudah login.");
+            setShowAlert(true);
+        }
     };
 
     return (
@@ -272,12 +404,10 @@ useEffect(() => {
                             </p>
                         </div>
 
-                        {/* 3. CARDS SECTION */}
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '40px' }}>
-                            {teams.slice(0, isExpanded ? teams.length : 3).map((team) => (
+                            {displayTeams.slice(0, isExpanded ? displayTeams.length : 3).map((team) => (
                                 <motion.div
                                     key={team.id}
-                                    // onClick handler removed from here
                                     whileHover={{ y: -10 }}
                                     style={{
                                         background: 'rgba(255, 255, 255, 0.03)', // MORE TRANSPARENT
@@ -373,38 +503,57 @@ useEffect(() => {
                                             Lihat Reviews
                                         </button>
                                         <button
-                                            onClick={() => setSelectedPackage(team.id)}
+                                            onClick={() => team.isAvailable !== false && setSelectedPackage(team.id)}
+                                            disabled={team.isAvailable === false}
                                             style={{
                                                 flex: 1,
                                                 padding: '12px',
-                                                background: selectedPackage === team.id ? '#FF8C42' : '#333',
+                                                background: team.isAvailable === false ? '#222' : (selectedPackage === team.id ? '#FF8C42' : '#333'),
                                                 border: 'none',
-                                                color: selectedPackage === team.id ? 'white' : '#666',
+                                                color: team.isAvailable === false ? '#555' : (selectedPackage === team.id ? 'white' : '#666'),
                                                 borderRadius: '12px',
-                                                cursor: 'pointer',
+                                                cursor: team.isAvailable === false ? 'not-allowed' : 'pointer',
                                                 fontWeight: '700',
-                                                boxShadow: selectedPackage === team.id ? '0 4px 15px rgba(255, 140, 66, 0.4)' : 'none'
+                                                boxShadow: selectedPackage === team.id ? '0 4px 15px rgba(255, 140, 66, 0.4)' : 'none',
+                                                opacity: team.isAvailable === false ? 0.5 : 1
                                             }}>
-                                            Pilih Tim
+                                            {team.isAvailable === false ? 'Sedang Bernegosiasi' : 'Pilih Tim'}
                                         </button>
                                     </div>
 
-                                    {/* Popular Badge */}
+                                    {/* Ready/Popular Badge */}
                                     {team.isPopular && (
                                         <div style={{
                                             position: 'absolute',
                                             top: '-12px',
                                             left: '50%',
                                             transform: 'translateX(-50%)',
-                                            background: '#FF8C42',
+                                            background: '#22c55e',
                                             color: 'white',
                                             padding: '4px 16px',
                                             borderRadius: '100px',
                                             fontSize: '0.75rem',
                                             fontWeight: 'bold',
-                                            boxShadow: '0 4px 10px rgba(255, 140, 66, 0.3)'
+                                            boxShadow: '0 4px 10px rgba(34, 197, 94, 0.3)'
                                         }}>
-                                            RECOMMENDED
+                                            READY
+                                        </div>
+                                    )}
+                                    {!team.isAvailable && team.chatStatus === 'OPEN' && (
+                                        <div style={{
+                                            position: 'absolute',
+                                            top: '-12px',
+                                            left: '50%',
+                                            transform: 'translateX(-50%)',
+                                            background: '#ef4444',
+                                            color: 'white',
+                                            padding: '4px 16px',
+                                            borderRadius: '100px',
+                                            fontSize: '0.75rem',
+                                            fontWeight: 'bold',
+                                            boxShadow: '0 4px 10px rgba(239, 68, 68, 0.3)'
+                                        }}>
+                                            SEDANG NEGOSIASI
                                         </div>
                                     )}
                                 </motion.div>
@@ -1076,6 +1225,7 @@ useEffect(() => {
                     <NegotiationSection
                         team={teams.find(t => t.id === selectedPackage)}
                         initialOffer={calculatedCost}
+                        roomId={chatRoomId}
                         onProceed={(agreedPrice) => {
                             setFinalAgreedPrice(agreedPrice);
                             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1089,6 +1239,7 @@ useEffect(() => {
                     <PaymentSection
                         team={teams.find(t => t.id === selectedPackage)}
                         finalPrice={`Rp ${finalAgreedPrice.toLocaleString('id-ID')}`}
+                        orderId={orderId} // Pass orderId here
                         onPaymentComplete={() => {
                             setShowPaymentSuccessModal(true);
                         }}
@@ -1365,7 +1516,8 @@ useEffect(() => {
                                     whileTap={{ scale: 0.95 }}
                                     onClick={() => {
                                         setShowSuccessModal(false);
-                                        navigateToStep(2);
+                                        setCurrentStep(2);
+                                        window.scrollTo(0, 0);
                                     }}
                                     style={{
                                         background: '#FF8C42',
@@ -1545,7 +1697,7 @@ useEffect(() => {
                 )}
             </AnimatePresence>
 
-        </div>
+        </div >
     );
 };
 
