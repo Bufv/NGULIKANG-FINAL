@@ -89,28 +89,46 @@ const ChatTukang = ({ onNavigate }) => {
                 // First get existing rooms
                 const res = await api.get('/chat/rooms');
 
-                // Filter: Only show NORMAL chats (with tukang) that are still OPEN
-                // Exclude ADMIN chats and CLOSED chats (completed projects)
+                // Filter logic:
+                // We want NORMAL chats that are OPEN.
+                // We ALSO want ADMIN chats (Customer Service).
                 const filteredRooms = res.data.filter(room => {
-                    return room.type === 'NORMAL' && room.status === 'OPEN';
+                    const isNormalOpen = room.type === 'NORMAL' && room.status === 'OPEN';
+                    const isAdmin = room.type === 'ADMIN';
+                    return isNormalOpen || isAdmin;
                 });
 
-                console.log('[ChatTukang] Total rooms:', res.data.length, 'Filtered (NORMAL + OPEN):', filteredRooms.length);
+                console.log('[ChatTukang] Total rooms:', res.data.length, 'Filtered:', filteredRooms.length);
 
                 let formattedContacts = filteredRooms.map(room => {
-                    const target = room.tukang;
+                    const isSupport = room.type === 'ADMIN';
+                    const target = isSupport ? { name: 'Customer Service', role: 'Support', avatar: 'https://ui-avatars.com/api/?name=CS&background=0D8ABC&color=fff' } : room.tukang;
                     const lastMsg = room.messages?.[0];
                     return {
                         id: room.id,
                         name: target?.name || 'Unknown',
-                        role: target?.role || 'Tukang',
+                        role: target?.role || (isSupport ? 'Customer Service' : 'Tukang'),
                         avatar: target?.avatar || `https://ui-avatars.com/api/?name=${target?.name || 'U'}&background=random`,
                         online: true, // Mock online status for now
                         unread: 0,
-                        lastMsg: lastMsg ? lastMsg.content : 'Mulai percakapan',
+                        lastMsg: lastMsg ? lastMsg.content : (isSupport ? 'Hubungi CS jika ada kendala' : 'Mulai percakapan'),
                         type: room.type
                     };
                 });
+
+                // Auto-create CS room if it doesn't exist
+                const csRoom = formattedContacts.find(c => c.type === 'ADMIN');
+                if (!csRoom) {
+                    try {
+                        // Assuming this endpoint exists from the other branch or we need to add it
+                        // If it fails, we just don't show it or show error
+                        // const newCsRoom = await api.post('/chat/support'); 
+                        // For now let's just create it on demand or skip if backend not ready
+                        // We will skip auto-creation to avoid errors if backend route missing
+                    } catch (err) {
+                        console.error("Failed to create CS room", err);
+                    }
+                }
 
                 setContacts(formattedContacts);
                 if (formattedContacts.length > 0 && !activeContact) {
@@ -163,30 +181,18 @@ const ChatTukang = ({ onNavigate }) => {
 
     // --- HELPERS ---
     const formatMessage = (msg) => {
-        // Debug logging
-        console.log('[formatMessage] Raw message:', msg);
-        console.log('[formatMessage] Sender role:', msg.sender?.role);
+        const isMe = msg.sender?.role === 'user' || msg.senderId === user?.id; // Robust check
 
-        // User's own messages have role 'user', messages from tukang/admin are 'agent'
-        const isMyMessage = msg.sender?.role === 'user';
-
-        const formatted = {
+        return {
             id: msg.id,
             text: msg.content,
-            sender: isMyMessage ? 'user' : 'agent',
+            sender: isMe ? 'user' : 'agent',
             time: new Date(msg.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            role: msg.sender?.role // keep role for debugging
+            role: msg.sender?.role
         };
-
-        console.log('[formatMessage] Formatted:', formatted);
-        return formatted;
     };
 
     const isMyMessage = (msg) => {
-        // With current formatMessage login:
-        // If I am user, my messages are 'user'.
-        // Admin messages are 'agent'.
-        // Tukang messages (if any) would be 'agent' from my perspective.
         return msg.sender === 'user';
     }
 

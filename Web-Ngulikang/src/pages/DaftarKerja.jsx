@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import Particles from '../components/ui/Particles';
+import { lamaranApi } from '../lib/api';
 
 const DaftarKerja = ({ onNavigate }) => {
     const [step, setStep] = useState(1);
@@ -15,7 +16,8 @@ const DaftarKerja = ({ onNavigate }) => {
         relocate: '',
         vehicle: '',
         experienceYears: '',
-        projectTypes: ''
+        projectTypes: '',
+        jobRoles: []
     });
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [agreements, setAgreements] = useState({
@@ -24,6 +26,7 @@ const DaftarKerja = ({ onNavigate }) => {
         termsAccepted: false
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState('');
 
     const [uploadedFiles, setUploadedFiles] = useState([]);
     const fileInputRef = useRef(null);
@@ -44,6 +47,16 @@ const DaftarKerja = ({ onNavigate }) => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    const toggleJobRole = (role) => {
+        setFormData(prev => {
+            const exists = prev.jobRoles.includes(role);
+            return {
+                ...prev,
+                jobRoles: exists ? prev.jobRoles.filter(item => item !== role) : [...prev.jobRoles, role]
+            };
+        });
+    };
+
     const handleNext = () => setStep(prev => prev + 1);
     const handleBack = () => setStep(prev => prev - 1);
 
@@ -51,21 +64,56 @@ const DaftarKerja = ({ onNavigate }) => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        setSubmitError('');
         const allAgreed = Object.values(agreements).every(v => v);
         if (!allAgreed) {
             alert("Harap setujui semua pernyataan sebelum mengirim lamaran.");
             return;
         }
 
-        setIsSubmitting(true);
+        if (!formData.jobRoles.length) {
+            setSubmitError('Pilih minimal satu posisi yang dilamar.');
+            return;
+        }
 
-        // Simulate API Call
-        setTimeout(() => {
-            setIsSubmitting(false);
-            setShowSuccess(true);
-            // Optional: Auto redirect after few seconds
-            // setTimeout(() => onNavigate('cek-status-lamaran'), 3000);
-        }, 2000);
+        if (uploadedFiles.length === 0) {
+            setSubmitError('Dokumen pendukung wajib diunggah.');
+            return;
+        }
+
+        setIsSubmitting(true);
+        const payload = new FormData();
+        payload.append('fullName', formData.fullName);
+        payload.append('ktp', formData.ktp);
+        payload.append('address', formData.address);
+        payload.append('phone', formData.phone);
+        payload.append('email', formData.email);
+        payload.append('maritalStatus', formData.maritalStatus);
+        payload.append('domicile', formData.domicile);
+        payload.append('relocate', formData.relocate);
+        payload.append('vehicle', formData.vehicle);
+        payload.append('experienceYears', formData.experienceYears);
+        payload.append('projectTypes', formData.projectTypes);
+        payload.append('jobRoles', JSON.stringify(formData.jobRoles));
+        uploadedFiles.forEach((file) => payload.append('documents', file));
+
+        lamaranApi
+            .createLamaran(payload, { headers: { 'Content-Type': 'multipart/form-data' } })
+            .then(() => {
+                setShowSuccess(true);
+            })
+            .catch((error) => {
+                const responseData = error.response?.data;
+                const issues = responseData?.errors;
+                const detail = Array.isArray(issues) && issues.length
+                    ? `${issues[0].path?.join('.') || 'field'}: ${issues[0].message}`
+                    : null;
+                const message = detail || responseData?.message || 'Gagal mengirim lamaran. Coba lagi.';
+                setSubmitError(message);
+            })
+            .finally(() => {
+                setIsSubmitting(false);
+            });
     };
 
     const jobRoles = [
@@ -208,27 +256,62 @@ const DaftarKerja = ({ onNavigate }) => {
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                                     <div className="form-group">
                                         <label className="form-label">Nama Lengkap (Sesuai KTP)</label>
-                                        <input type="text" className="form-input" placeholder="Nama Depan" name="fullName" onChange={handleChange} />
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            placeholder="Nama Depan"
+                                            name="fullName"
+                                            value={formData.fullName}
+                                            onChange={handleChange}
+                                        />
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">Nomor KTP / NIK</label>
-                                        <input type="number" className="form-input" placeholder="16 Digit NIK" name="ktp" onChange={handleChange} />
+                                        <input
+                                            type="number"
+                                            className="form-input"
+                                            placeholder="16 Digit NIK"
+                                            name="ktp"
+                                            value={formData.ktp}
+                                            onChange={handleChange}
+                                        />
                                     </div>
                                 </div>
 
                                 <div className="form-group">
                                     <label className="form-label">Tempat Tinggal saat ini (Alamat Lengkap)</label>
-                                    <input type="text" className="form-input" placeholder="Jln. Contoh No. 123, Kel. Apa, Kec. Dimana" name="address" onChange={handleChange} />
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="Jln. Contoh No. 123, Kel. Apa, Kec. Dimana"
+                                        name="address"
+                                        value={formData.address}
+                                        onChange={handleChange}
+                                    />
                                 </div>
 
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                                     <div className="form-group">
                                         <label className="form-label">Nomor WhatsApp</label>
-                                        <input type="tel" className="form-input" placeholder="08xxxxxxxxxx" name="phone" onChange={handleChange} />
+                                        <input
+                                            type="tel"
+                                            className="form-input"
+                                            placeholder="08xxxxxxxxxx"
+                                            name="phone"
+                                            value={formData.phone}
+                                            onChange={handleChange}
+                                        />
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">Email</label>
-                                        <input type="email" className="form-input" placeholder="user@gmail.com" name="email" onChange={handleChange} />
+                                        <input
+                                            type="email"
+                                            className="form-input"
+                                            placeholder="user@gmail.com"
+                                            name="email"
+                                            value={formData.email}
+                                            onChange={handleChange}
+                                        />
                                     </div>
                                 </div>
                                 <div className="form-group">
@@ -322,7 +405,13 @@ const DaftarKerja = ({ onNavigate }) => {
                                     <div className="checkbox-grid">
                                         {jobRoles.map((role, idx) => (
                                             <label key={idx} className="radio-label">
-                                                <input type="checkbox" className="radio-input" /> {role}
+                                                <input
+                                                    type="checkbox"
+                                                    className="radio-input"
+                                                    checked={formData.jobRoles.includes(role)}
+                                                    onChange={() => toggleJobRole(role)}
+                                                />{' '}
+                                                {role}
                                             </label>
                                         ))}
                                     </div>
@@ -331,33 +420,104 @@ const DaftarKerja = ({ onNavigate }) => {
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                                     <div className="form-group">
                                         <label className="form-label">Lama Pengalaman</label>
-                                        <input type="text" className="form-input" placeholder="Contoh: 3 Tahun" name="experienceYears" onChange={handleChange} />
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            placeholder="Contoh: 3 Tahun"
+                                            name="experienceYears"
+                                            value={formData.experienceYears}
+                                            onChange={handleChange}
+                                        />
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">Jenis Proyek yg dikerjakan</label>
-                                        <input type="text" className="form-input" placeholder="Perumahan, Gedung, dll" name="projectTypes" onChange={handleChange} />
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            placeholder="Perumahan, Gedung, dll"
+                                            name="projectTypes"
+                                            value={formData.projectTypes}
+                                            onChange={handleChange}
+                                        />
                                     </div>
                                 </div>
 
                                 <div className="form-group">
                                     <label className="form-label">Lokasi Domisili Saat Ini (Kota/Kab)</label>
-                                    <input type="text" className="form-input" placeholder="Jakarta Selatan" name="domicile" onChange={handleChange} />
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="Jakarta Selatan"
+                                        name="domicile"
+                                        value={formData.domicile}
+                                        onChange={handleChange}
+                                    />
                                 </div>
 
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                                     <div className="form-group">
                                         <label className="form-label">Bersedia Pindah Lokasi?</label>
                                         <div className="radio-group">
-                                            <label className="radio-label"><input type="radio" name="relocate" className="radio-input" value="yes" onChange={handleChange} /> Ya</label>
-                                            <label className="radio-label"><input type="radio" name="relocate" className="radio-input" value="no" onChange={handleChange} /> Tidak</label>
+                                            <label className="radio-label">
+                                                <input
+                                                    type="radio"
+                                                    name="relocate"
+                                                    className="radio-input"
+                                                    value="yes"
+                                                    checked={formData.relocate === 'yes'}
+                                                    onChange={handleChange}
+                                                />{' '}
+                                                Ya
+                                            </label>
+                                            <label className="radio-label">
+                                                <input
+                                                    type="radio"
+                                                    name="relocate"
+                                                    className="radio-input"
+                                                    value="no"
+                                                    checked={formData.relocate === 'no'}
+                                                    onChange={handleChange}
+                                                />{' '}
+                                                Tidak
+                                            </label>
                                         </div>
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">Kendaraan Pribadi</label>
                                         <div className="radio-group">
-                                            <label className="radio-label"><input type="radio" name="vehicle" className="radio-input" value="motor" onChange={handleChange} /> Motor</label>
-                                            <label className="radio-label"><input type="radio" name="vehicle" className="radio-input" value="mobil" onChange={handleChange} /> Mobil</label>
-                                            <label className="radio-label"><input type="radio" name="vehicle" className="radio-input" value="none" onChange={handleChange} /> Tidak Ada</label>
+                                            <label className="radio-label">
+                                                <input
+                                                    type="radio"
+                                                    name="vehicle"
+                                                    className="radio-input"
+                                                    value="motor"
+                                                    checked={formData.vehicle === 'motor'}
+                                                    onChange={handleChange}
+                                                />{' '}
+                                                Motor
+                                            </label>
+                                            <label className="radio-label">
+                                                <input
+                                                    type="radio"
+                                                    name="vehicle"
+                                                    className="radio-input"
+                                                    value="mobil"
+                                                    checked={formData.vehicle === 'mobil'}
+                                                    onChange={handleChange}
+                                                />{' '}
+                                                Mobil
+                                            </label>
+                                            <label className="radio-label">
+                                                <input
+                                                    type="radio"
+                                                    name="vehicle"
+                                                    className="radio-input"
+                                                    value="none"
+                                                    checked={formData.vehicle === 'none'}
+                                                    onChange={handleChange}
+                                                />{' '}
+                                                Tidak Ada
+                                            </label>
                                         </div>
                                     </div>
                                 </div>
@@ -517,6 +677,12 @@ const DaftarKerja = ({ onNavigate }) => {
                                         Saya menyetujui semua Syarat & Ketentuan yang berlaku di NguliKang.
                                     </label>
                                 </div>
+
+                                {submitError && (
+                                    <div style={{ marginBottom: '20px', color: '#ef4444', fontWeight: '600', fontSize: '0.95rem' }}>
+                                        {submitError}
+                                    </div>
+                                )}
 
                                 <div style={{ display: 'flex', gap: '10px' }}>
                                     <button type="button" onClick={handleBack} style={{ flex: 1, padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>Kembali</button>

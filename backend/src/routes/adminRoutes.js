@@ -8,6 +8,7 @@ const {
   deleteUser,
   verifyTukang
 } = require('../controllers/adminController');
+const { listLamaran, updateLamaran } = require('../controllers/lamaranController');
 const {
   listAdminProducts,
   getAdminProduct,
@@ -32,5 +33,8 @@ router.get('/products/:id', getAdminProduct);
 router.post('/products', createProduct);
 router.put('/products/:id', updateProduct);
 router.delete('/products/:id', deleteProduct);
+
+router.get('/lamaran', listLamaran);
+router.put('/lamaran/:id', updateLamaran);
 
 module.exports = router;

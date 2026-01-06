@@ -10,6 +10,7 @@ const chatRoutes = require('./routes/chatRoutes');
 const marketplaceRoutes = require('./routes/marketplaceRoutes');
 const teamRoutes = require('./routes/teamRoutes');
 const negotiationRoutes = require('./routes/negotiationRoutes');
+const lamaranRoutes = require('./routes/lamaranRoutes');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -39,6 +40,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api', teamRoutes);
 app.use('/api/negotiation', negotiationRoutes);
 app.use('/api/orders', require('./routes/orderRoutes'));
+app.use('/api', lamaranRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

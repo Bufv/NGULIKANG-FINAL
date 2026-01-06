@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 // material-ui
 import {
@@ -42,7 +42,7 @@ import {
 
 // project imports
 import MainCard from 'components/MainCard';
-import Dot from 'components/@extended/Dot';
+import { adminApi } from 'lib/api';
 
 // assets
 import {
@@ -59,82 +59,46 @@ import {
 
 // ==============================|| LAMARAN MASUK PAGE ||============================== //
 
-const initialApplications = [
-    {
-        id: 'APP-2024001',
-        name: 'Budi Santoso',
-        role: 'Mandor Lapangan',
-        location: 'Jakarta',
-        date: '28 Desember 2024',
-        status: 'Ditolak',
-        department: 'Operasional',
-        recruiter: 'Tim HRD',
-        lastUpdate: '28 Dec 2024',
-        note: 'Tidak memenuhi kualifikasi pengalaman minimal.',
-        photo: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-        timeline: [
-            { title: 'Pendaftaran Berkas', date: '28 Dec 2023', status: 'completed', desc: 'Berkas diterima sistem.' },
-            { title: 'Verifikasi Admin', date: '28 Dec 2023', status: 'completed', desc: 'Admin memverifikasi kelengkapan.' },
-            { title: 'Seleksi CV', date: '28 Dec 2023', status: 'rejected', desc: 'Pengalaman kurang dari 5 tahun.' }
-        ]
-    },
-    {
-        id: 'APP-2024045',
-        name: 'Asep Saepul',
-        role: 'Tukang Cat Interior',
-        location: 'Bandung',
-        date: '10 Januari 2025',
-        status: 'Pending',
-        department: 'Produksi',
-        recruiter: 'Tim HRD',
-        lastUpdate: '10 Jan 2025',
-        note: 'Menunggu review portofolio.',
-        photo: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-        timeline: [
-            { title: 'Pendaftaran Berkas', date: '10 Jan 2025', status: 'completed', desc: 'Berkas diterima sistem.' },
-            { title: 'Verifikasi Admin', date: '10 Jan 2025', status: 'current', desc: 'Sedang diverifikasi...' }
-        ]
-    },
-    {
-        id: 'APP-2024002',
-        name: 'Joko Widodo',
-        role: 'Tukang Kayu Profesional',
-        location: 'Surabaya',
-        date: '02 Januari 2025',
-        status: 'Interview',
-        department: 'Produksi',
-        recruiter: 'Pak Hartono',
-        lastUpdate: '12 Jan 2025',
-        note: 'Perlu tes praktek pembuatan kursi.',
-        photo: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-        timeline: [
-            { title: 'Pendaftaran Berkas', date: '02 Jan 2025', status: 'completed', desc: 'Berkas lengkap.' },
-            { title: 'Verifikasi Admin', date: '03 Jan 2025', status: 'completed', desc: 'Lolos verifikasi.' },
-            { title: 'Interview User', date: '12 Jan 2025', status: 'current', desc: 'Jadwal interview Senin depan.' }
-        ]
-    }
+const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
+
+const statusOptions = [
+    { value: 'pending', label: 'Pending' },
+    { value: 'approved', label: 'Diterima' },
+    { value: 'rejected', label: 'Ditolak' }
 ];
 
-const statusOptions = ['Pending', 'Interview', 'Diterima', 'Ditolak'];
+const statusLabels = statusOptions.reduce((acc, option) => {
+    acc[option.value] = option.label;
+    return acc;
+}, {});
+
+const formatDate = (value) => {
+    if (!value) return '-';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+const buildFileUrl = (path) => {
+    if (!path) return '#';
+    if (path.startsWith('http')) return path;
+    return `${API_BASE_URL}${path}`;
+};
 
 function StatusChip({ status }) {
     let color;
     let icon;
 
     switch (status) {
-        case 'Pending':
+        case 'pending':
             color = 'warning';
             icon = <ClockCircleOutlined />;
             break;
-        case 'Interview':
-            color = 'info';
-            icon = <UserOutlined />;
-            break;
-        case 'Diterima':
+        case 'approved':
             color = 'success';
             icon = <CheckCircleOutlined />;
             break;
-        case 'Ditolak':
+        case 'rejected':
             color = 'error';
             icon = <CloseCircleOutlined />;
             break;
@@ -145,7 +109,7 @@ function StatusChip({ status }) {
     return (
         <Chip
             icon={icon}
-            label={status}
+            label={statusLabels[status] || 'Pending'}
             color={color}
             size="small"
             variant="outlined"
@@ -170,17 +134,65 @@ const InfoCard = ({ title, value }) => (
 
 export default function LamaranMasuk() {
     const theme = useTheme();
-    const [rows, setRows] = useState(initialApplications);
+    const [rows, setRows] = useState([]);
     const [open, setOpen] = useState(false);
     const [selectedApp, setSelectedApp] = useState(null);
     const [note, setNote] = useState('');
     const [editStatus, setEditStatus] = useState('');
     const [newTimeline, setNewTimeline] = useState({ title: '', desc: '', status: 'completed' });
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    const loadLamaran = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            const { data } = await adminApi.getLamaran();
+            const mapped = (data.data || []).map((item) => ({
+                id: item.id,
+                name: item.fullName || item.user?.name || '-',
+                role: (item.jobRoles || []).join(', ') || '-',
+                location: item.domicile || '-',
+                date: formatDate(item.submittedAt),
+                status: item.status || 'pending',
+                department: item.department || '',
+                recruiter: item.recruiter || '',
+                lastUpdate: formatDate(item.updatedAt || item.submittedAt),
+                note: item.note || '',
+                photo: item.avatar || '',
+                email: item.email || '-',
+                phone: item.phone || '-',
+                ktp: item.ktp || '-',
+                address: item.address || '-',
+                maritalStatus: item.maritalStatus || '-',
+                relocate: item.relocate,
+                vehicle: item.vehicle || '-',
+                experienceYears: item.experienceYears || '-',
+                projectTypes: item.projectTypes || '-',
+                documents: item.documents || [],
+                timeline: (item.timeline || []).map((entry) => ({
+                    title: entry.title,
+                    status: entry.status,
+                    desc: entry.description || '',
+                    eventDate: entry.eventDate
+                }))
+            }));
+            setRows(mapped);
+        } catch (err) {
+            setError(err.response?.data?.message || 'Gagal memuat data lamaran.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadLamaran();
+    }, []);
 
     const handleOpen = (app) => {
         setSelectedApp(app);
         setNote(app.note);
-        setEditStatus(app.status);
+        setEditStatus(app.status || 'pending');
         setOpen(true);
     };
 
@@ -209,11 +221,10 @@ export default function LamaranMasuk() {
 
     const handleAddTimeline = () => {
         if (!newTimeline.title) return;
-        const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
         const newItem = {
             ...newTimeline,
-            date: today
-        }; // Status is already in newTimeline
+            eventDate: new Date().toISOString()
+        };
 
         const updatedTimeline = [...selectedApp.timeline, newItem];
         const updatedApp = { ...selectedApp, timeline: updatedTimeline };
@@ -223,57 +234,56 @@ export default function LamaranMasuk() {
         setNewTimeline({ title: '', desc: '', status: 'completed' }); // Reset form
     };
 
-    const handleSaveChanges = () => {
+    const handleSaveChanges = async () => {
         if (!selectedApp) return;
 
-        const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+        setError('');
+        const now = new Date().toISOString();
         let updatedTimeline = [...selectedApp.timeline];
 
-        // If status changed to a final state, add to timeline AUTOMATICALLY
         if (editStatus !== selectedApp.status) {
-            // Mark previous last step as completed if it wasn't
             const lastIdx = updatedTimeline.length - 1;
             if (updatedTimeline[lastIdx] && updatedTimeline[lastIdx].status === 'current') {
-                updatedTimeline[lastIdx].status = 'completed';
+                updatedTimeline[lastIdx] = { ...updatedTimeline[lastIdx], status: 'completed' };
             }
 
-            if (editStatus === 'Diterima') {
+            if (editStatus === 'approved') {
                 updatedTimeline.push({
                     title: 'Diterima',
-                    date: today,
                     status: 'completed',
-                    desc: 'Selamat! Anda diterima menjadi mitra Tukang.'
+                    desc: 'Selamat! Anda diterima menjadi mitra Tukang.',
+                    eventDate: now
                 });
-            } else if (editStatus === 'Ditolak') {
+            } else if (editStatus === 'rejected') {
                 updatedTimeline.push({
                     title: 'Ditolak',
-                    date: today,
                     status: 'rejected',
-                    desc: 'Lamaran tidak dilanjutkan.'
-                });
-            } else if (editStatus === 'Interview') {
-                updatedTimeline.push({
-                    title: 'Interview',
-                    date: today,
-                    status: 'current',
-                    desc: 'Proses interview dijadwalkan.'
+                    desc: 'Lamaran tidak dilanjutkan.',
+                    eventDate: now
                 });
             }
         }
 
-        const updatedApp = {
-            ...selectedApp,
+        const payload = {
             status: editStatus,
-            timeline: updatedTimeline,
-            note: note,
-            lastUpdate: today
+            note,
+            department: selectedApp.department,
+            recruiter: selectedApp.recruiter,
+            timeline: updatedTimeline.map((item) => ({
+                title: item.title,
+                description: item.desc,
+                status: item.status,
+                eventDate: item.eventDate
+            }))
         };
 
-        setRows(rows.map(r => r.id === selectedApp.id ? updatedApp : r));
-        setSelectedApp(updatedApp);
-
-        alert('Perubahan berhasil disimpan.');
-        handleClose();
+        try {
+            await adminApi.updateLamaran(selectedApp.id, payload);
+            await loadLamaran();
+            handleClose();
+        } catch (err) {
+            setError(err.response?.data?.message || 'Gagal menyimpan perubahan.');
+        }
     };
 
     const handleCreateAccount = () => {
@@ -284,6 +294,16 @@ export default function LamaranMasuk() {
 
     return (
         <MainCard title="Daftar Lamaran Masuk">
+            {error && (
+                <Typography color="error" variant="body2" sx={{ mb: 2 }}>
+                    {error}
+                </Typography>
+            )}
+            {loading && (
+                <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                    Memuat data lamaran...
+                </Typography>
+            )}
             <TableContainer>
                 <Table>
                     <TableHead>
@@ -297,37 +317,47 @@ export default function LamaranMasuk() {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {rows.map((row) => (
-                            <TableRow key={row.id} hover>
-                                <TableCell>
-                                    <Typography variant="subtitle2">{row.id}</Typography>
-                                </TableCell>
-                                <TableCell>
-                                    <Typography variant="subtitle1">{row.role}</Typography>
-                                    <Typography variant="caption" color="textSecondary">{row.department}</Typography>
-                                </TableCell>
-                                <TableCell>
-                                    <Stack direction="row" spacing={1} alignItems="center">
-                                        <Avatar alt={row.name} src={row.photo} sx={{ width: 32, height: 32 }} />
-                                        <Box>
-                                            <Typography variant="body2">{row.name}</Typography>
-                                            <Typography variant="caption" color="textSecondary">{row.location}</Typography>
-                                        </Box>
-                                    </Stack>
-                                </TableCell>
-                                <TableCell>{row.date}</TableCell>
-                                <TableCell>
-                                    <StatusChip status={row.status} />
-                                </TableCell>
-                                <TableCell align="right">
-                                    <Tooltip title="Lihat Detail">
-                                        <IconButton color="primary" onClick={() => handleOpen(row)}>
-                                            <EyeOutlined />
-                                        </IconButton>
-                                    </Tooltip>
+                        {rows.length === 0 && !loading ? (
+                            <TableRow>
+                                <TableCell colSpan={6}>
+                                    <Typography variant="body2" color="textSecondary">
+                                        Belum ada lamaran masuk.
+                                    </Typography>
                                 </TableCell>
                             </TableRow>
-                        ))}
+                        ) : (
+                            rows.map((row) => (
+                                <TableRow key={row.id} hover>
+                                    <TableCell>
+                                        <Typography variant="subtitle2">{row.id}</Typography>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Typography variant="subtitle1">{row.role}</Typography>
+                                        <Typography variant="caption" color="textSecondary">{row.department}</Typography>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Stack direction="row" spacing={1} alignItems="center">
+                                            <Avatar alt={row.name} src={row.photo} sx={{ width: 32, height: 32 }} />
+                                            <Box>
+                                                <Typography variant="body2">{row.name}</Typography>
+                                                <Typography variant="caption" color="textSecondary">{row.location}</Typography>
+                                            </Box>
+                                        </Stack>
+                                    </TableCell>
+                                    <TableCell>{row.date}</TableCell>
+                                    <TableCell>
+                                        <StatusChip status={row.status} />
+                                    </TableCell>
+                                    <TableCell align="right">
+                                        <Tooltip title="Lihat Detail">
+                                            <IconButton color="primary" onClick={() => handleOpen(row)}>
+                                                <EyeOutlined />
+                                            </IconButton>
+                                        </Tooltip>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        )}
                     </TableBody>
                 </Table>
             </TableContainer>
@@ -377,12 +407,12 @@ export default function LamaranMasuk() {
                                             onChange={(e) => setEditStatus(e.target.value)}
                                             sx={{ mb: 2, bgcolor: 'background.paper' }}
                                         >
-                                            {statusOptions.map((option) => (
-                                                <MenuItem key={option} value={option}>
-                                                    {option}
-                                                </MenuItem>
-                                            ))}
-                                        </TextField>
+                                        {statusOptions.map((option) => (
+                                            <MenuItem key={option.value} value={option.value}>
+                                                {option.label}
+                                            </MenuItem>
+                                        ))}
+                                    </TextField>
 
                                         <Typography variant="subtitle2" gutterBottom>Catatan Internal</Typography>
                                         <TextField
@@ -398,12 +428,50 @@ export default function LamaranMasuk() {
                                     </Box>
 
 
+                                    <Box sx={{ mb: 3, p: 2, bgcolor: 'secondary.lighter', borderRadius: 1 }}>
+                                        <Typography variant="subtitle2" gutterBottom>Data Pelamar</Typography>
+                                        <Stack spacing={1}>
+                                            <Typography variant="body2"><strong>Nama:</strong> {selectedApp.name}</Typography>
+                                            <Typography variant="body2"><strong>Email:</strong> {selectedApp.email}</Typography>
+                                            <Typography variant="body2"><strong>Telepon:</strong> {selectedApp.phone}</Typography>
+                                            <Typography variant="body2"><strong>NIK:</strong> {selectedApp.ktp}</Typography>
+                                            <Typography variant="body2"><strong>Alamat:</strong> {selectedApp.address}</Typography>
+                                            <Typography variant="body2"><strong>Status Nikah:</strong> {selectedApp.maritalStatus}</Typography>
+                                            <Typography variant="body2"><strong>Domisili:</strong> {selectedApp.location}</Typography>
+                                            <Typography variant="body2">
+                                                <strong>Bersedia Relokasi:</strong>{' '}
+                                                {selectedApp.relocate === true ? 'Ya' : selectedApp.relocate === false ? 'Tidak' : '-'}
+                                            </Typography>
+                                            <Typography variant="body2"><strong>Kendaraan:</strong> {selectedApp.vehicle}</Typography>
+                                            <Typography variant="body2"><strong>Pengalaman:</strong> {selectedApp.experienceYears}</Typography>
+                                            <Typography variant="body2"><strong>Jenis Proyek:</strong> {selectedApp.projectTypes}</Typography>
+                                            <Typography variant="body2"><strong>Posisi Dilamar:</strong> {selectedApp.role}</Typography>
+                                        </Stack>
+                                    </Box>
+
+                                    <Box sx={{ mb: 3, p: 2, bgcolor: 'secondary.lighter', borderRadius: 1 }}>
+                                        <Typography variant="subtitle2" gutterBottom>Dokumen Pendukung</Typography>
+                                        {selectedApp.documents.length === 0 ? (
+                                            <Typography variant="body2" color="textSecondary">Tidak ada dokumen.</Typography>
+                                        ) : (
+                                            <Stack spacing={1}>
+                                                {selectedApp.documents.map((doc, index) => (
+                                                    <Typography key={`${doc}-${index}`} variant="body2">
+                                                        <a href={buildFileUrl(doc)} target="_blank" rel="noreferrer">
+                                                            Dokumen {index + 1}
+                                                        </a>
+                                                    </Typography>
+                                                ))}
+                                            </Stack>
+                                        )}
+                                    </Box>
+
                                     <Grid container spacing={2}>
                                         <Grid item xs={12} sm={6}>
-                                            <InfoCard title="Departemen" value={selectedApp.department} />
+                                            <InfoCard title="Departemen" value={selectedApp.department || '-'} />
                                         </Grid>
                                         <Grid item xs={12} sm={6}>
-                                            <InfoCard title="Recruiter" value={selectedApp.recruiter} />
+                                            <InfoCard title="Recruiter" value={selectedApp.recruiter || '-'} />
                                         </Grid>
                                         <Grid item xs={12} sm={6}>
                                             <InfoCard title="Tanggal Update" value={selectedApp.lastUpdate} />
@@ -418,7 +486,7 @@ export default function LamaranMasuk() {
                                         {selectedApp.timeline.map((item, index) => (
                                             <TimelineItem key={index}>
                                                 <TimelineOppositeContent color="text.secondary" sx={{ flex: 0.3 }}>
-                                                    {item.date}
+                                                    {formatDate(item.eventDate)}
                                                     {/* DELETE BUTTON FOR TIMELINE */}
                                                     <Box sx={{ mt: 1 }}>
                                                         <IconButton
@@ -492,7 +560,7 @@ export default function LamaranMasuk() {
                         <DialogActions sx={{ p: 3 }}>
                             <Button onClick={handleClose} color="secondary">Tutup</Button>
 
-                            {selectedApp.status === 'Diterima' && (
+                            {selectedApp.status === 'approved' && (
                                 <Button
                                     variant="contained"
                                     color="success"

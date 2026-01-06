@@ -3,11 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Particles from '../components/ui/Particles';
 import PaymentSection from '../components/pembayaran/PaymentSection';
 import NegotiationSection from '../components/pembayaran/NegotiationSection';
-import { apiGet } from '../lib/api';
+import { apiGet, api } from '../lib/api';
 
 
 const NguliHarian = () => {
-    const [selectedPackage, setSelectedPackage] = useState(1);
+    const [selectedPackage, setSelectedPackage] = useState(null);
     const [viewingReviews, setViewingReviews] = useState(null);
     const [isExpanded, setIsExpanded] = useState(false);
 
@@ -19,6 +19,9 @@ const NguliHarian = () => {
     const [customDuration, setCustomDuration] = useState(''); // State to hold manual duration input
     const [isDurationDropdownOpen, setIsDurationDropdownOpen] = useState(false);
     const [workersCount, setWorkersCount] = useState('');
+    const [address, setAddress] = useState('');
+    const [clientName, setClientName] = useState('');
+    const [clientPhone, setClientPhone] = useState('');
 
     const [selectedDate, setSelectedDate] = useState(null);
     const [showDatePicker, setShowDatePicker] = useState(false);
@@ -29,6 +32,8 @@ const NguliHarian = () => {
         const params = new URLSearchParams(window.location.search);
         return parseInt(params.get('step')) || 1;
     });
+    const [orderId, setOrderId] = useState(null);
+    const [roomId, setRoomId] = useState(null);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
 
     // Alert Modal State
@@ -86,13 +91,23 @@ const NguliHarian = () => {
 
     const [teams, setTeams] = useState([]);
 
-useEffect(() => {
-  let alive = true;
-  apiGet('/api/teams?service=harian')
-    .then((data) => { if (alive) setTeams(data?.data || []); })
-    .catch(console.error);
-  return () => { alive = false; };
-}, []);
+    useEffect(() => {
+        let alive = true;
+        apiGet('/api/teams?service=harian')
+            .then((data) => {
+                if (alive) {
+                    const loadedTeams = data?.data || [];
+                    setTeams(loadedTeams);
+                    // Select first team by default if none selected
+                    if (loadedTeams.length > 0) {
+                        setSelectedPackage(loadedTeams[0].id);
+                        setWorkersCount(loadedTeams[0].members.length);
+                    }
+                }
+            })
+            .catch(console.error);
+        return () => { alive = false; };
+    }, []);
 
     const formatRating = (value) => {
         const numberValue = Number(value);
@@ -605,7 +620,13 @@ useEffect(() => {
                                 {/* Row 2: Alamat */}
                                 <div style={{ marginBottom: '24px' }}>
                                     <label style={{ display: 'block', color: 'white', fontWeight: 'bold', marginBottom: '10px', fontSize: '0.9rem' }}>Alamat Lokasi Pengerjaan</label>
-                                    <input type="text" placeholder="Jl. Raya No. 123..." style={{ width: '100%', height: '56px', padding: '0 16px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: 'white', outline: 'none', boxSizing: 'border-box' }} />
+                                    <input
+                                        type="text"
+                                        placeholder="Jl. Raya No. 123..."
+                                        value={address}
+                                        onChange={(e) => setAddress(e.target.value)}
+                                        style={{ width: '100%', height: '56px', padding: '0 16px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: 'white', outline: 'none', boxSizing: 'border-box' }}
+                                    />
                                 </div>
 
                                 {/* Row 3: Jumlah Pekerja & Tanggal Mulai */}
@@ -968,18 +989,30 @@ useEffect(() => {
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '40px' }}>
                                     <div>
                                         <label style={{ display: 'block', color: 'white', fontWeight: 'bold', marginBottom: '10px', fontSize: '0.9rem' }}>Nama Pemesan</label>
-                                        <input type="text" placeholder="Nama Lengkap Anda" style={{ width: '100%', height: '56px', padding: '0 16px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: 'white', outline: 'none', boxSizing: 'border-box' }} />
+                                        <input
+                                            type="text"
+                                            placeholder="Nama Lengkap Anda"
+                                            value={clientName}
+                                            onChange={(e) => setClientName(e.target.value)}
+                                            style={{ width: '100%', height: '56px', padding: '0 16px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: 'white', outline: 'none', boxSizing: 'border-box' }}
+                                        />
                                     </div>
                                     <div>
                                         <label style={{ display: 'block', color: 'white', fontWeight: 'bold', marginBottom: '10px', fontSize: '0.9rem' }}>Nomor WhatsApp</label>
-                                        <input type="tel" placeholder="Contoh: 081234567890" style={{ width: '100%', height: '56px', padding: '0 16px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: 'white', outline: 'none', boxSizing: 'border-box' }} />
+                                        <input
+                                            type="tel"
+                                            placeholder="Contoh: 081234567890"
+                                            value={clientPhone}
+                                            onChange={(e) => setClientPhone(e.target.value)}
+                                            style={{ width: '100%', height: '56px', padding: '0 16px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: 'white', outline: 'none', boxSizing: 'border-box' }}
+                                        />
                                     </div>
                                 </div>
 
                                 <motion.button
-                                    onClick={(e) => {
+                                    type="submit"
+                                    onClick={async (e) => {
                                         e.preventDefault();
-
                                         // VALIDATION
                                         if (!jobType || jobType === 'Pilih Jenis Pekerjaan' || !duration || duration === 'Pilih Durasi' || !selectedDate) {
                                             setAlertTitle('Data Belum Lengkap!');
@@ -987,14 +1020,71 @@ useEffect(() => {
                                             setShowAlert(true);
                                             return;
                                         }
+                                        if (!address.trim()) {
+                                            setAlertTitle('Alamat Kosong');
+                                            setAlertMessage("Mohon isi alamat lokasi pengerjaan.");
+                                            setShowAlert(true);
+                                            return;
+                                        }
+                                        if (!selectedPackage) {
+                                            setAlertTitle("Pilih Tim");
+                                            setAlertMessage("Silakan pilih tim tukang terlebih dahulu.");
+                                            setShowAlert(true);
+                                            return;
+                                        }
 
                                         setIsSubmitting(true);
-                                        setTimeout(() => {
+                                        try {
+                                            const selectedTeam = teams.find(t => t.id === selectedPackage);
+                                            if (!selectedTeam) throw new Error("Tim tidak ditemukan");
+
+                                            // Prepare payload adapted for Daily Work
+                                            const dStr = duration === 'Lainnya' ? customDuration : duration;
+
+                                            const payload = {
+                                                tukangId: selectedTeam.id,
+                                                projectType: `Harian: ${jobType === 'Lainnya' ? otherJobDetail : jobType}`,
+                                                propertyType: `Alamat: ${address}`,
+                                                budget: `Estimasi: Rp ${calculateTotalCost().toLocaleString()} (${dStr})`,
+                                                location: address,
+                                                startDate: selectedDate ? selectedDate.toISOString() : new Date().toISOString()
+                                            };
+
+                                            const token = localStorage.getItem('ngulikang_access_token');
+                                            if (!token) {
+                                                setAlertTitle("Login Diperlukan");
+                                                setAlertMessage("Silakan login terlebih dahulu untuk memesan.");
+                                                setShowAlert(true);
+                                                setIsSubmitting(false);
+                                                return;
+                                            }
+
+                                            // Call start negotiation API to create Order & Chat
+                                            // Use api.post directly as apiGet does not support POST
+                                            const response = await api.post('/negotiation/start', payload);
+
+                                            // Store IDs for next steps
+                                            if (response.data && response.data.success) {
+                                                localStorage.setItem('current_order_id', response.data.orderId);
+                                                localStorage.setItem('current_room_id', response.data.chatRoomId);
+                                                setOrderId(response.data.orderId);
+                                                setRoomId(response.data.chatRoomId);
+
+                                                setShowSuccessModal(true);
+                                            }
+
+                                        } catch (error) {
+                                            console.error("Booking Error:", error);
+                                            setAlertTitle("Gagal Memproses");
+                                            setAlertMessage("Terjadi kesalahan saat menghubungi server. Pastikan Anda sudah login.");
+                                            setShowAlert(true);
+                                        } finally {
                                             setIsSubmitting(false);
-                                            setShowSuccessModal(true);
-                                        }, 1500);
+                                        }
                                     }}
-                                    whileHover={{ scale: 1.02 }}
+                                    whileHover={{ scale: 1.02, boxShadow: '0 10px 40px rgba(255, 140, 66, 0.4)' }}
+                                    whileTap={{ scale: 0.98 }}
+                                    disabled={isSubmitting}
                                     style={{
                                         width: '100%',
                                         padding: '20px',
@@ -1063,6 +1153,7 @@ useEffect(() => {
                     <NegotiationSection
                         team={teams.find(t => t.id === selectedPackage)}
                         initialOffer={calculateTotalCost()}
+                        roomId={roomId}
                         onProceed={() => {
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                             setCurrentStep(3);
@@ -1076,13 +1167,14 @@ useEffect(() => {
                         team={teams.find(t => t.id === selectedPackage)}
                         finalPrice={`Rp ${calculateTotalCost().toLocaleString('id-ID')}`}
                         projectType="Jasa Tukang Harian"
+                        orderId={orderId}
                         dpAmount={`Rp ${(calculateTotalCost() * 0.3).toLocaleString('id-ID')}`}
                         onPaymentComplete={() => {
                             setAlertTitle('Pembayaran Berhasil!');
                             setAlertMessage("Pembayaran diterima. Pekerja Harian akan segera datang sesuai jadwal.");
                             setShowAlert(true);
                             setTimeout(() => {
-                                window.location.href = "/";
+                                window.location.href = "/?page=check-progress";
                             }, 3000);
                         }}
                     />

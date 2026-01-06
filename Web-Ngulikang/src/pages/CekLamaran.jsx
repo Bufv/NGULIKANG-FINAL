@@ -1,121 +1,80 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Particles from '../components/ui/Particles';
+import { lamaranApi } from '../lib/api';
+
+const statusLabels = {
+    pending: 'Pending',
+    approved: 'Diterima',
+    rejected: 'Ditolak'
+};
+
+const formatDate = (value) => {
+    if (!value) return '-';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+};
 
 const CekLamaran = () => {
-    const [appId, setAppId] = useState('');
-    const [searchResult, setSearchResult] = useState(null);
-    const [isLoading, setIsLoading] = useState(false);
+    const [lamaran, setLamaran] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState('');
 
-    // Helper to get mock data
-    const getMockData = (id) => {
-        // Check if it matches recent
-        const recentMatch = recentApplications.find(app => app.id === id);
+    useEffect(() => {
+        let active = true;
 
-        if (recentMatch) {
-            return {
-                id: recentMatch.id,
-                jobTitle: recentMatch.name,
-                applicantName: 'Budi Santoso',
-                location: 'Jakarta',
-                status: recentMatch.status,
-                progress: recentMatch.status === 'Interview' ? 60 : recentMatch.status === 'Diterima' ? 100 : recentMatch.status === 'Ditolak' ? 100 : 30,
-                applyDate: '28 Desember 2024',
-                lastUpdate: recentMatch.lastUpdate,
-                department: 'Operasional',
-                recruiter: 'Tim HRD',
-                steps: [
-                    { title: 'Pendaftaran Berkas', date: '28 Des 2024', status: 'completed', desc: 'Berkas diterima.' },
-                    { title: 'Verifikasi Admin', date: '30 Des 2024', status: 'completed', desc: 'Dokumen lengkap.' },
-                    { title: 'Wawancara', date: '-', status: recentMatch.status === 'Interview' ? 'current' : recentMatch.status === 'Diterima' ? 'completed' : 'pending', desc: 'Sesi tanya jawab.' },
-                    { title: 'Hasil Akhir', date: '-', status: recentMatch.status === 'Diterima' || recentMatch.status === 'Ditolak' ? 'completed' : 'pending', desc: `Status: ${recentMatch.status}` },
-                ]
-            };
-        } else {
-            return {
-                id: id,
-                jobTitle: 'Tukang Umum (Default)',
-                applicantName: 'Pengguna Tamu',
-                location: 'Lokasi Anda',
-                status: 'Sedang Diproses',
-                progress: 40,
-                applyDate: 'Baru saja',
-                lastUpdate: 'Hari ini',
-                department: 'Umum',
-                recruiter: 'Admin',
-                steps: [
-                    { title: 'Pendaftaran', date: 'Hari ini', status: 'completed', desc: 'Lamaran masuk.' },
-                    { title: 'Review', date: 'Sedang berlangsung', status: 'current', desc: 'Sedang direview oleh tim.' },
-                    { title: 'Keputusan', date: '-', status: 'pending', desc: 'Menunggu hasil.' }
-                ]
-            };
-        }
-    };
-
-    // Handle URL Params & History
-    React.useEffect(() => {
-        const handleUrlChange = () => {
-            const params = new URLSearchParams(window.location.search);
-            const id = params.get('id');
-            if (id) {
-                setAppId(id);
-                setSearchResult(getMockData(id));
-            } else {
-                setSearchResult(null);
-                setAppId('');
+        const loadLamaran = async () => {
+            setIsLoading(true);
+            setError('');
+            try {
+                const { data } = await lamaranApi.getMyLamaran();
+                if (!active) return;
+                setLamaran(data.data);
+            } catch (err) {
+                if (!active) return;
+                if (err.response?.status === 404) {
+                    setError('Belum ada lamaran yang tersimpan untuk akun ini.');
+                } else {
+                    setError(err.response?.data?.message || 'Gagal memuat status lamaran.');
+                }
+            } finally {
+                if (active) {
+                    setIsLoading(false);
+                }
             }
         };
 
-        // Check on mount
-        handleUrlChange();
-
-        // Listen for popstate (Browser Back/Forward)
-        window.addEventListener('popstate', handleUrlChange);
-        return () => window.removeEventListener('popstate', handleUrlChange);
+        loadLamaran();
+        return () => {
+            active = false;
+        };
     }, []);
 
-    const handleSearch = (e) => {
-        if (e) e.preventDefault();
-        setIsLoading(true);
+    const statusLabel = statusLabels[lamaran?.status] || 'Pending';
 
-        const idToSearch = appId || 'APP-2024001';
+    const progress = useMemo(() => {
+        if (!lamaran) return 0;
+        if (lamaran.status === 'approved' || lamaran.status === 'rejected') {
+            return 100;
+        }
+        const steps = lamaran.timeline || [];
+        if (!steps.length) return 30;
+        const completed = steps.filter((step) => step.status === 'completed').length;
+        return Math.min(90, Math.max(30, Math.round((completed / steps.length) * 100)));
+    }, [lamaran]);
 
-        // Update URL
-        const url = new URL(window.location);
-        url.searchParams.set('id', idToSearch);
-        window.history.pushState({}, '', url);
-
-        // Simulate Delay then Show Data
-        setTimeout(() => {
-            setIsLoading(false);
-            setSearchResult(getMockData(idToSearch));
-        }, 1500);
-    };
-
-    const recentApplications = [
-        { id: 'APP-2024001', name: 'Tukang Kayu Profesional', status: 'Interview', lastUpdate: '2 Jan 2025' },
-        { id: 'APP-2023089', name: 'Mandor Lapangan', status: 'Ditolak', lastUpdate: '15 Nov 2024' },
-        { id: 'APP-2024045', name: 'Tukang Cat Interior', status: 'Pending', lastUpdate: '10 Jan 2025' }
-    ];
-
-    const handleQuickSearch = (id) => {
-        setAppId(id);
-        // We can't just call handleSearch because state update (setAppId) might not be ready.
-        // So we pass ID directly or use a timeout, but simpler to just trigger logic manually:
-        setIsLoading(true);
-        const url = new URL(window.location);
-        url.searchParams.set('id', id);
-        window.history.pushState({}, '', url);
-
-        setTimeout(() => {
-            setIsLoading(false);
-            setSearchResult(getMockData(id));
-        }, 1500);
-    };
+    const timelineSteps = useMemo(() => {
+        return (lamaran?.timeline || []).map((item) => ({
+            title: item.title,
+            date: formatDate(item.eventDate),
+            status: item.status,
+            desc: item.description || ''
+        }));
+    }, [lamaran]);
 
     return (
         <div style={{ position: 'relative', minHeight: '100vh', color: 'white', overflow: 'hidden' }}>
-
             {/* Background */}
             <div style={{ position: 'fixed', inset: 0, zIndex: 0 }}>
                 <img
@@ -128,125 +87,29 @@ const CekLamaran = () => {
             </div>
 
             <div style={{ position: 'relative', zIndex: 10, maxWidth: '1000px', margin: '0 auto', padding: '220px 20px 80px' }}>
-
-                {/* Search Section */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     style={{ textAlign: 'center', marginBottom: '50px' }}
                 >
                     <h1 style={{ fontSize: '2.5rem', fontWeight: '800', marginBottom: '16px' }}>
-                        Cek Status <span style={{ color: '#FF8C42' }}>Lamaran</span>
+                        Status <span style={{ color: '#FF8C42' }}>Lamaran</span>
                     </h1>
-                    <p style={{ color: '#aaa', maxWidth: '600px', margin: '0 auto 30px' }}>
-                        Pantau status seleksi karir Anda secara real-time. Masukkan ID Lamaran atau Email yang terdaftar.
+                    <p style={{ color: '#aaa', maxWidth: '600px', margin: '0 auto' }}>
+                        Pantau proses seleksi karir Anda secara real-time berdasarkan akun yang sedang login.
                     </p>
-
-                    <form onSubmit={handleSearch} style={{ maxWidth: '500px', margin: '0 auto', display: 'flex', gap: '10px' }}>
-                        <input
-                            type="text"
-                            placeholder="Contoh: APP-2024001"
-                            value={appId}
-                            onChange={(e) => setAppId(e.target.value)}
-                            style={{
-                                flex: 1,
-                                padding: '16px 24px',
-                                borderRadius: '100px',
-                                border: '1px solid rgba(255,255,255,0.1)',
-                                background: 'rgba(255,255,255,0.05)',
-                                color: 'white',
-                                outline: 'none',
-                                fontSize: '1rem'
-                            }}
-                        />
-                        <button
-                            type="submit"
-                            disabled={isLoading}
-                            style={{
-                                padding: '16px 32px',
-                                borderRadius: '100px',
-                                border: 'none',
-                                background: isLoading ? '#333' : '#FF8C42',
-                                color: 'white',
-                                fontWeight: 'bold',
-                                cursor: isLoading ? 'not-allowed' : 'pointer',
-                                transition: 'all 0.2s'
-                            }}
-                        >
-                            {isLoading ? 'Mencari...' : 'Cari'}
-                        </button>
-                    </form>
                 </motion.div>
 
-                {/* Recent Applications Cards (Only show when no result is displayed) */}
-                {!searchResult && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.3 }}
-                        style={{ marginTop: '60px' }}
-                    >
-                        <h3 style={{ textAlign: 'center', fontSize: '1.2rem', color: '#888', marginBottom: '20px' }}>
-                            Riwayat Pengecekan
-                        </h3>
-                        <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                            gap: '20px',
-                            maxWidth: '900px',
-                            margin: '0 auto'
-                        }}>
-                            {recentApplications.map((app, index) => (
-                                <motion.div
-                                    key={index}
-                                    whileHover={{ scale: 1.03, y: -5 }}
-                                    whileTap={{ scale: 0.98 }}
-                                    onClick={() => handleQuickSearch(app.id)}
-                                    style={{
-                                        background: 'rgba(255, 255, 255, 0.03)',
-                                        border: '1px solid rgba(255, 255, 255, 0.05)',
-                                        borderRadius: '16px',
-                                        padding: '20px',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s',
-                                        position: 'relative',
-                                        overflow: 'hidden'
-                                    }}
-                                >
-                                    <div style={{
-                                        position: 'absolute',
-                                        top: 0,
-                                        left: 0,
-                                        width: '4px',
-                                        height: '100%',
-                                        background: app.status === 'Interview' ? '#FF8C42' : app.status === 'Diterima' ? '#4CAF50' : app.status === 'Ditolak' ? '#EF4444' : '#888'
-                                    }} />
-
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                                        <span style={{ fontSize: '0.8rem', color: '#666', fontFamily: 'monospace' }}>{app.id}</span>
-                                        <span style={{
-                                            fontSize: '0.75rem',
-                                            padding: '2px 8px',
-                                            borderRadius: '100px',
-                                            background: 'rgba(255,255,255,0.05)',
-                                            color: app.status === 'Interview' ? '#FF8C42' : app.status === 'Diterima' ? '#4CAF50' : app.status === 'Ditolak' ? '#EF4444' : '#ccc'
-                                        }}>
-                                            {app.status}
-                                        </span>
-                                    </div>
-                                    <h4 style={{ margin: '0 0 5px 0', fontSize: '1.1rem', color: 'white' }}>{app.name}</h4>
-                                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#888' }}>
-                                        Terakhir update: {app.lastUpdate}
-                                    </p>
-                                </motion.div>
-                            ))}
-                        </div>
-                    </motion.div>
+                {isLoading && (
+                    <div style={{ textAlign: 'center', color: '#aaa', fontSize: '1rem' }}>Memuat status lamaran...</div>
                 )}
 
-                {/* Result Section */}
+                {!isLoading && error && (
+                    <div style={{ textAlign: 'center', color: '#ef4444', fontWeight: '600' }}>{error}</div>
+                )}
+
                 <AnimatePresence>
-                    {searchResult && (
+                    {!isLoading && !error && lamaran && (
                         <motion.div
                             initial={{ opacity: 0, y: 40 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -263,28 +126,34 @@ const CekLamaran = () => {
                             {/* Application Header */}
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px', flexWrap: 'wrap', gap: '20px' }}>
                                 <div>
-                                    <div style={{ fontSize: '0.9rem', color: '#888', marginBottom: '4px' }}>ID Lamaran: {searchResult.id}</div>
-                                    <h2 style={{ margin: 0, fontSize: '1.8rem', color: 'white' }}>{searchResult.jobTitle}</h2>
+                                    <div style={{ fontSize: '0.9rem', color: '#888', marginBottom: '4px' }}>
+                                        ID Lamaran: {lamaran.id}
+                                    </div>
+                                    <h2 style={{ margin: 0, fontSize: '1.8rem', color: 'white' }}>
+                                        {lamaran.jobRoles?.join(', ') || 'Lamaran Tukang'}
+                                    </h2>
                                     <div style={{ display: 'flex', gap: '15px', marginTop: '10px', color: '#ccc', fontSize: '0.9rem' }}>
-                                        <span>📍 {searchResult.location}</span>
-                                        <span>👤 {searchResult.applicantName}</span>
+                                        <span>📍 {lamaran.domicile || '-'}</span>
+                                        <span>👤 {lamaran.fullName || '-'}</span>
                                     </div>
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
-                                    <div style={{
-                                        display: 'inline-block',
-                                        padding: '8px 16px',
-                                        borderRadius: '100px',
-                                        background: 'rgba(255, 140, 66, 0.15)',
-                                        color: '#FF8C42',
-                                        fontWeight: 'bold',
-                                        border: '1px solid rgba(255, 140, 66, 0.3)',
-                                        marginBottom: '10px'
-                                    }}>
-                                        {searchResult.status}
+                                    <div
+                                        style={{
+                                            display: 'inline-block',
+                                            padding: '8px 16px',
+                                            borderRadius: '100px',
+                                            background: 'rgba(255, 140, 66, 0.15)',
+                                            color: '#FF8C42',
+                                            fontWeight: 'bold',
+                                            border: '1px solid rgba(255, 140, 66, 0.3)',
+                                            marginBottom: '10px'
+                                        }}
+                                    >
+                                        {statusLabel}
                                     </div>
                                     <div style={{ fontSize: '0.9rem', color: '#888' }}>
-                                        Melamar: {searchResult.applyDate}
+                                        Melamar: {formatDate(lamaran.submittedAt)}
                                     </div>
                                 </div>
                             </div>
@@ -292,38 +161,40 @@ const CekLamaran = () => {
                             {/* Circular Progress & Info */}
                             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(250px, 300px) 1fr', gap: '40px', marginBottom: '50px' }}>
                                 {/* Left: Progress Circle */}
-                                <div style={{
-                                    background: 'rgba(255,255,255,0.03)',
-                                    borderRadius: '20px',
-                                    padding: '30px',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    border: '1px solid rgba(255,255,255,0.05)'
-                                }}>
+                                <div
+                                    style={{
+                                        background: 'rgba(255,255,255,0.03)',
+                                        borderRadius: '20px',
+                                        padding: '30px',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        border: '1px solid rgba(255,255,255,0.05)'
+                                    }}
+                                >
                                     <div style={{ position: 'relative', width: '150px', height: '150px', marginBottom: '20px' }}>
                                         <svg width="150" height="150" viewBox="0 0 100 100">
                                             <circle cx="50" cy="50" r="45" fill="none" stroke="#333" strokeWidth="8" />
                                             <motion.circle
-                                                cx="50" cy="50" r="45"
+                                                cx="50"
+                                                cy="50"
+                                                r="45"
                                                 fill="none"
                                                 stroke="#FF8C42"
                                                 strokeWidth="8"
                                                 strokeLinecap="round"
                                                 initial={{ pathLength: 0 }}
-                                                animate={{ pathLength: searchResult.progress / 100 }}
-                                                transition={{ duration: 1.5, ease: "easeOut" }}
+                                                animate={{ pathLength: progress / 100 }}
+                                                transition={{ duration: 1.5, ease: 'easeOut' }}
                                                 style={{ transform: 'rotate(-90deg)', transformOrigin: '50% 50%' }}
                                             />
                                         </svg>
                                         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', fontWeight: 'bold' }}>
-                                            {searchResult.progress}%
+                                            {progress}%
                                         </div>
                                     </div>
-                                    <div style={{ textAlign: 'center', color: '#aaa', fontSize: '0.9rem' }}>
-                                        Tahapan Seleksi
-                                    </div>
+                                    <div style={{ textAlign: 'center', color: '#aaa', fontSize: '0.9rem' }}>Tahapan Seleksi</div>
                                 </div>
 
                                 {/* Right: Details */}
@@ -332,19 +203,19 @@ const CekLamaran = () => {
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                                         <div style={{ background: 'rgba(255,255,255,0.03)', padding: '15px', borderRadius: '12px' }}>
                                             <div style={{ fontSize: '0.85rem', color: '#888', marginBottom: '5px' }}>Departemen</div>
-                                            <div style={{ fontWeight: 'bold' }}>{searchResult.department}</div>
+                                            <div style={{ fontWeight: 'bold' }}>{lamaran.department || '-'}</div>
                                         </div>
                                         <div style={{ background: 'rgba(255,255,255,0.03)', padding: '15px', borderRadius: '12px' }}>
                                             <div style={{ fontSize: '0.85rem', color: '#888', marginBottom: '5px' }}>Recruiter</div>
-                                            <div style={{ fontWeight: 'bold' }}>{searchResult.recruiter}</div>
+                                            <div style={{ fontWeight: 'bold' }}>{lamaran.recruiter || '-'}</div>
                                         </div>
                                         <div style={{ background: 'rgba(255,255,255,0.03)', padding: '15px', borderRadius: '12px' }}>
                                             <div style={{ fontSize: '0.85rem', color: '#888', marginBottom: '5px' }}>Tanggal Update</div>
-                                            <div style={{ fontWeight: 'bold' }}>{searchResult.lastUpdate}</div>
+                                            <div style={{ fontWeight: 'bold' }}>{formatDate(lamaran.updatedAt || lamaran.submittedAt)}</div>
                                         </div>
                                         <div style={{ background: 'rgba(255,255,255,0.03)', padding: '15px', borderRadius: '12px' }}>
                                             <div style={{ fontSize: '0.85rem', color: '#888', marginBottom: '5px' }}>Catatan</div>
-                                            <div style={{ fontWeight: 'bold', color: '#FF8C42' }}>Cek email berkala</div>
+                                            <div style={{ fontWeight: 'bold', color: '#FF8C42' }}>{lamaran.note || 'Cek email berkala'}</div>
                                         </div>
                                     </div>
                                 </div>
@@ -356,34 +227,38 @@ const CekLamaran = () => {
                                     Timeline Seleksi
                                 </h3>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-                                    {searchResult.steps.map((step, index) => (
-                                        <div key={index} style={{ display: 'flex', gap: '20px', position: 'relative' }}>
+                                    {timelineSteps.map((step, index) => (
+                                        <div key={`${step.title}-${index}`} style={{ display: 'flex', gap: '20px', position: 'relative' }}>
                                             {/* Line */}
-                                            {index !== searchResult.steps.length - 1 && (
-                                                <div style={{
-                                                    position: 'absolute',
-                                                    left: '15px',
-                                                    top: '35px',
-                                                    bottom: '-25px',
-                                                    width: '2px',
-                                                    background: step.status === 'completed' ? '#FF8C42' : '#333'
-                                                }} />
+                                            {index !== timelineSteps.length - 1 && (
+                                                <div
+                                                    style={{
+                                                        position: 'absolute',
+                                                        left: '15px',
+                                                        top: '35px',
+                                                        bottom: '-25px',
+                                                        width: '2px',
+                                                        background: step.status === 'completed' ? '#FF8C42' : '#333'
+                                                    }}
+                                                />
                                             )}
 
                                             {/* Icon */}
-                                            <div style={{
-                                                width: '32px',
-                                                height: '32px',
-                                                borderRadius: '50%',
-                                                background: step.status === 'completed' ? '#FF8C42' : step.status === 'current' ? '#FF8C42' : '#222',
-                                                border: step.status === 'current' ? '4px solid rgba(255,140,66,0.3)' : 'none',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                flexShrink: 0,
-                                                zIndex: 2,
-                                                boxShadow: step.status === 'completed' || step.status === 'current' ? '0 0 15px rgba(255,140,66,0.4)' : 'none'
-                                            }}>
+                                            <div
+                                                style={{
+                                                    width: '32px',
+                                                    height: '32px',
+                                                    borderRadius: '50%',
+                                                    background: step.status === 'completed' ? '#FF8C42' : step.status === 'current' ? '#FF8C42' : '#222',
+                                                    border: step.status === 'current' ? '4px solid rgba(255,140,66,0.3)' : 'none',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    flexShrink: 0,
+                                                    zIndex: 2,
+                                                    boxShadow: step.status === 'completed' || step.status === 'current' ? '0 0 15px rgba(255,140,66,0.4)' : 'none'
+                                                }}
+                                            >
                                                 {step.status === 'completed' ? '✓' : step.status === 'current' ? '⚡' : '•'}
                                             </div>
 
@@ -405,14 +280,11 @@ const CekLamaran = () => {
                                     ))}
                                 </div>
                             </div>
-
                         </motion.div>
                     )}
                 </AnimatePresence>
-
-
-            </div >
-        </div >
+            </div>
+        </div>
     );
 };
 
