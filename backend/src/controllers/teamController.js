@@ -53,34 +53,48 @@ const listTeams = async (req, res, next) => {
       }
     });
 
-    const teams = users.map((user, index) => {
-      const profile = user.tukangProfile || {};
-      const priceValue = service === 'borongan' ? profile.priceBorongan : profile.priceHarian;
-      const priceLabel = priceValue
-        ? formatPriceLabel(priceValue, suffix)
-        : formatPriceLabel(150000 + index * 25000, suffix);
-      const members = Array.isArray(profile.members) && profile.members.length
-        ? profile.members
-        : buildDefaultMembers(user, profile);
-      const reviewsList = Array.isArray(profile.reviewSamples) && profile.reviewSamples.length
-        ? profile.reviewSamples
-        : buildDefaultReviews(user, profile.rating);
-      const reviewCount = profile.reviewCount || reviewsList.length;
-
-      return {
-        id: user.id,
-        name: user.name,
-        image: profile.photoUrl || user.avatar || 'https://via.placeholder.com/60',
-        rating: Number(profile.rating || 0),
-        reviews: reviewCount,
-        members,
-        projects: profile.projectsCount || 0,
-        experience: profile.experience || '-',
-        price: priceLabel,
-        isPopular: profile.isPopular || Number(profile.rating || 0) >= 4.7,
-        reviewsList
-      };
+    // Get active/busy tukangs (those in OPEN chat rooms)
+    const activeChats = await prisma.chatRoom.findMany({
+      where: {
+        status: 'OPEN',
+        type: 'NORMAL',
+        tukangId: { not: null }
+      },
+      select: { tukangId: true }
     });
+
+    const busyTukangIds = new Set(activeChats.map(c => c.tukangId));
+
+    const teams = users
+      .filter(user => !busyTukangIds.has(user.id)) // Filter out busy tukangs
+      .map((user, index) => {
+        const profile = user.tukangProfile || {};
+        const priceValue = service === 'borongan' ? profile.priceBorongan : profile.priceHarian;
+        const priceLabel = priceValue
+          ? formatPriceLabel(priceValue, suffix)
+          : formatPriceLabel(150000 + index * 25000, suffix);
+        const members = Array.isArray(profile.members) && profile.members.length
+          ? profile.members
+          : buildDefaultMembers(user, profile);
+        const reviewsList = Array.isArray(profile.reviewSamples) && profile.reviewSamples.length
+          ? profile.reviewSamples
+          : buildDefaultReviews(user, profile.rating);
+        const reviewCount = profile.reviewCount || reviewsList.length;
+
+        return {
+          id: user.id,
+          name: user.name,
+          image: profile.photoUrl || user.avatar || 'https://via.placeholder.com/60',
+          rating: Number(profile.rating || 0),
+          reviews: reviewCount,
+          members,
+          projects: profile.projectsCount || 0,
+          experience: profile.experience || '-',
+          price: priceLabel,
+          isPopular: profile.isPopular || Number(profile.rating || 0) >= 4.7,
+          reviewsList
+        };
+      });
 
     return res.json({ data: teams });
   } catch (error) {
