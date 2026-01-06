@@ -1,18 +1,14 @@
 const express = require('express');
-const router = express.Router();
-const chatController = require('../controllers/chatController');
 const { authenticate } = require('../middleware/auth');
+const chatController = require('../controllers/chatController');
 
-// Protect all chat routes
+const router = express.Router();
+
 router.use(authenticate);
 
-// Start support chat
-router.post('/admin/start', chatController.startAdminChat);
-
-// Get my rooms (User sees theirs, Admin sees all support chats)
 router.get('/rooms', chatController.getChatRooms);
-
-// Get messages for a specific room
-router.get('/:roomId/messages', chatController.getMessages);
+router.get('/rooms/:roomId/messages', chatController.getMessages);
+router.post('/support', chatController.startAdminChat);
+router.put('/rooms/:roomId/close', chatController.closeChat);
 
 module.exports = router;

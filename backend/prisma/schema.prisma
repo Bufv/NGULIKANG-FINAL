@@ -175,6 +175,16 @@ model Order {
   totalPrice Decimal      @db.Decimal(12, 2)
   location   String?
   notes      String?
+  
+  // Project Details from Form
+  projectType   String?
+  propertyType  String?
+  budget        String?
+  startDate     DateTime?
+  
+  // Link to ChatRoom for negotiation
+  chatRoomId    String?     @unique
+  
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
 
@@ -224,15 +234,35 @@ model Gaji {
   order  Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
 }
 
+enum ChatType {
+  NORMAL
+  ADMIN
+}
+
+enum ChatStatus {
+  OPEN
+  CLOSED
+}
+
 model ChatRoom {
   id        String   @id @default(uuid())
   userId    String
-  tukangId  String
+  tukangId  String?
+  type      ChatType @default(NORMAL)
+  status    ChatStatus @default(OPEN)
   createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   user   User @relation("ChatUser", fields: [userId], references: [id], onDelete: Cascade)
-  tukang User @relation("ChatTukang", fields: [tukangId], references: [id], onDelete: Cascade)
+  tukang User? @relation("ChatTukang", fields: [tukangId], references: [id], onDelete: Cascade)
   messages Message[]
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  SYSTEM
+  ACTION_CLOSE
 }
 
 model Message {
@@ -240,6 +270,7 @@ model Message {
   roomId   String
   senderId String
   content  String
+  type     MessageType @default(TEXT)
   read     Boolean  @default(false)
   sentAt   DateTime @default(now())
 

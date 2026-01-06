@@ -1,10 +1,10 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
-const ACCESS_TOKEN_KEY = 'ngulikang_access_token';
-const REFRESH_TOKEN_KEY = 'ngulikang_refresh_token';
-const USER_KEY = 'ngulikang_user';
+const ACCESS_TOKEN_KEY = 'tukang_token';
+const REFRESH_TOKEN_KEY = 'tukang_refresh_token';
+const USER_KEY = 'tukang_user';
 
 const api = axios.create({
     baseURL: API_URL,
@@ -83,33 +83,13 @@ const authApi = {
     })
 };
 
-const marketplaceApi = {
-    listProducts: (params) => api.get('/marketplace/products', { params }),
-    getProduct: (id) => api.get(`/marketplace/products/${id}`)
-};
-
-const normalizePath = (url) => {
-    if (url.startsWith('http')) {
-        return url;
-    }
-    if (url.startsWith('/api')) {
-        return url.replace(/^\/api/, '');
-    }
-    return url;
-};
-
 const apiGet = (url, config) => {
-    const normalized = normalizePath(url);
-    if (normalized.startsWith('http')) {
-        return axios.get(normalized, config).then((response) => response.data);
-    }
-    return api.get(normalized, config).then((response) => response.data);
+    return api.get(url, config).then((response) => response.data);
 };
 
 export {
     api,
     authApi,
-    marketplaceApi,
     apiGet,
     getAccessToken,
     getRefreshToken,

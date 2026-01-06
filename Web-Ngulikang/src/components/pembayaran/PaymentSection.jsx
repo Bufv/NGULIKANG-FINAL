@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { api } from '../../lib/api'; // Import API client
 
-const PaymentSection = ({ team, finalPrice, onPaymentComplete, projectType = "Paket Borongan" }) => {
+const PaymentSection = ({ team, finalPrice, onPaymentComplete, projectType = "Paket Borongan", orderId }) => {
     const [selectedMethod, setSelectedMethod] = useState('bca');
     const [isProcessing, setIsProcessing] = useState(false);
 
@@ -12,13 +13,32 @@ const PaymentSection = ({ team, finalPrice, onPaymentComplete, projectType = "Pa
         { id: 'qris', name: 'QRIS', icon: '📱', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/QR_code_for_mobile_English_Wikipedia.svg/1200px-QR_code_for_mobile_English_Wikipedia.svg.png' } // Placeholder QR
     ];
 
-    const handlePayment = () => {
+    const handlePayment = async () => {
         setIsProcessing(true);
-        // Simulate payment process
-        setTimeout(() => {
-            setIsProcessing(false);
-            onPaymentComplete();
-        }, 3000);
+        try {
+            if (orderId) {
+                // Remove non-numeric chars for backend logic if needed, but sending raw agreedPrice logic might be handled in backend or here. 
+                // finalPrice string is like "Rp 15.000.000". Let's convert to number.
+                const numericPrice = parseInt(finalPrice.replace(/[^0-9]/g, ''), 10);
+
+                await api.post(`/orders/${orderId}/payment`, {
+                    agreedPrice: numericPrice,
+                    paymentMethod: selectedMethod
+                });
+                console.log('Payment API success');
+            } else {
+                console.warn('No orderId provided, skipping API call (simulation only)');
+            }
+        } catch (error) {
+            console.error('Payment failed:', error);
+            // Optional: alert error here
+        } finally {
+            // Keep existing simulation/UX flow
+            setTimeout(() => {
+                setIsProcessing(false);
+                onPaymentComplete();
+            }, 1500);
+        }
     };
 
     return (

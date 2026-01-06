@@ -6,8 +6,10 @@ const env = require('./config/env');
 const path = require('path');
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const chatRoutes = require('./routes/chatRoutes');
 const marketplaceRoutes = require('./routes/marketplaceRoutes');
 const teamRoutes = require('./routes/teamRoutes');
+const negotiationRoutes = require('./routes/negotiationRoutes');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -19,7 +21,7 @@ app.use(
     credentials: true
   })
 );
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 
@@ -33,7 +35,10 @@ app.use('/uploads', express.static(uploadDir));
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/marketplace', marketplaceRoutes);
+app.use('/api/chat', chatRoutes);
 app.use('/api', teamRoutes);
+app.use('/api/negotiation', negotiationRoutes);
+app.use('/api/orders', require('./routes/orderRoutes'));
 
 app.use(notFound);
 app.use(errorHandler);

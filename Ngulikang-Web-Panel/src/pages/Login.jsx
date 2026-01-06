@@ -1,17 +1,49 @@
+import { useState } from 'react';
 import '../styles/Login.css';
 import LiquidEther from '../components/effects/LiquidEther';
 import logo from '../assets/LOGO/TERANG.png';
 
 function Login({ onLoginSuccess }) {
-    const handleSubmit = (e) => {
+    const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        setError('');
+        setIsLoading(true);
+
         const formData = new FormData(e.target);
-        console.log('Login:', {
-            email: formData.get('email'),
-            password: formData.get('password')
-        });
-        // Redirect to dashboard after login
-        if (onLoginSuccess) onLoginSuccess();
+        const email = formData.get('email');
+        const password = formData.get('password');
+
+        try {
+            const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+            const response = await fetch(`${apiUrl}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Login gagal');
+            }
+
+            // Cek role, harus tukang
+            if (data.user.role !== 'tukang') {
+                throw new Error('Akun ini bukan akun tukang');
+            }
+
+            localStorage.setItem('tukang_token', data.accessToken);
+            localStorage.setItem('tukang_user', JSON.stringify(data.user));
+
+            if (onLoginSuccess) onLoginSuccess(data.user);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -37,6 +69,7 @@ function Login({ onLoginSuccess }) {
 
                 {/* Form */}
                 <form onSubmit={handleSubmit}>
+                    {error && <div style={{ color: '#ff4d4f', marginBottom: '15px', textAlign: 'center', background: 'rgba(255, 77, 79, 0.1)', padding: '10px', borderRadius: '8px' }}>{error}</div>}
                     <div className="form-group">
                         <label htmlFor="email">Email</label>
                         <input
@@ -60,8 +93,8 @@ function Login({ onLoginSuccess }) {
                     </div>
 
                     {/* Masuk Button */}
-                    <button type="submit" className="btn-masuk">
-                        Masuk
+                    <button type="submit" className="btn-masuk" disabled={isLoading}>
+                        {isLoading ? 'Loading...' : 'Masuk'}
                     </button>
 
 

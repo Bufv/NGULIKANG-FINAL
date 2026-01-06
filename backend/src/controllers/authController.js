@@ -78,12 +78,12 @@ const register = async (req, res, next) => {
         tukangProfile:
           role === 'tukang'
             ? {
-                create: {
-                  skills: [],
-                  verified: false,
-                  saldo: 0
-                }
+              create: {
+                skills: [],
+                verified: false,
+                saldo: 0
               }
+            }
             : undefined
       }
     });
@@ -201,10 +201,39 @@ const me = async (req, res, next) => {
   }
 };
 
+const updateProfile = async (req, res, next) => {
+  try {
+    const { name, phone, address } = req.body;
+    const userId = req.user.id;
+
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (phone) updateData.phone = phone;
+    // Note: address is not in User schema currently, so we can't save it to DB 
+    // unless we add it to schema. For now we ignore it to prevent errors.
+
+    if (req.file) {
+      // Nginx serves /uploads/ mapped to the uploads folder
+      const avatarUrl = `/uploads/${req.file.filename}`;
+      updateData.avatar = avatarUrl;
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: updateData
+    });
+
+    return res.json({ user: sanitizeUser(updatedUser) });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
   refresh,
   logout,
-  me
+  me,
+  updateProfile
 };

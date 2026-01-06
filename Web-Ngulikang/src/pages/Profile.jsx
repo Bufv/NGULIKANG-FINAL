@@ -4,6 +4,8 @@ import Particles from '../components/ui/Particles';
 import { useUser } from '../context/UserContext';
 import { useNotification } from '../context/NotificationContext';
 
+import { authApi } from '../lib/api';
+
 // --- ICONS ---
 const Icons = {
     User: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>,
@@ -24,6 +26,7 @@ const Profile = ({ onNavigate }) => {
 
     // --- FORM STATES ---
     const [editForm, setEditForm] = useState({ ...user });
+    const [selectedFile, setSelectedFile] = useState(null);
 
     // Password Change State
     const [passwordForm, setPasswordForm] = useState({
@@ -40,6 +43,7 @@ const Profile = ({ onNavigate }) => {
         setActiveTab(tab);
         setIsEditing(false); // Reset editing mode when switching tabs
         setEditForm({ ...user }); // Reset form
+        setSelectedFile(null);
         setPasswordForm({ current: '', new: '', confirm: '' });
     };
 
@@ -55,24 +59,43 @@ const Profile = ({ onNavigate }) => {
                 showNotification("Ukuran file terlalu besar. Maksimal 5MB.", 'error');
                 return;
             }
+            setSelectedFile(file);
             const reader = new FileReader();
             reader.onloadend = () => {
                 setEditForm(prev => ({ ...prev, avatar: reader.result }));
-                // If we are NOT in full edit mode, we might want to save avatar immediately?
-                // The prompt implies a "proper" save flow. Let's make avatar change part of the "Edit Profile" flow or auto-save?
-                // For better UX, let's allow avatar direct update but via Save button in edit mode.
-                // Or simplified: Avatar click enters edit mode?
-                // Let's stick to standard flow: Change inputs -> Click Save.
+
                 if (!isEditing) setIsEditing(true); // Auto enter edit mode on photo change
             };
             reader.readAsDataURL(file);
         }
     };
 
-    const handleSaveProfile = () => {
-        updateUser(editForm);
-        setIsEditing(false);
-        showNotification('Profil berhasil diperbarui!', 'success');
+    const handleSaveProfile = async () => {
+        try {
+            const formData = new FormData();
+            formData.append('name', editForm.name);
+            formData.append('phone', editForm.phone || '');
+            if (editForm.address) formData.append('address', editForm.address);
+
+            if (selectedFile) {
+                formData.append('avatar', selectedFile);
+            }
+
+            const response = await authApi.updateProfile(formData);
+            if (response && (response.user || response.data?.user)) {
+                // Handle different response structures gracefully (axios usually returns data in data)
+                const returnedUser = response.user || response.data.user;
+                updateUser(returnedUser);
+                setIsEditing(false);
+                setSelectedFile(null);
+                showNotification('Profil berhasil diperbarui!', 'success');
+            } else {
+                throw new Error("Invalid response");
+            }
+        } catch (error) {
+            console.error("Update profile error:", error);
+            showNotification('Gagal memperbarui profil. Silakan coba lagi.', 'error');
+        }
     };
 
     const handlePasswordChange = (e) => {
@@ -175,7 +198,7 @@ const Profile = ({ onNavigate }) => {
                                             display: 'flex', alignItems: 'center', justifyContent: 'center'
                                         }}>
                                             {(isEditing ? editForm.avatar : user.avatar) ? (
-                                                <img src={isEditing ? editForm.avatar : user.avatar} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                <img src={getImageUrl(isEditing ? editForm.avatar : user.avatar)} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                             ) : (
                                                 <span style={{ fontSize: '2.5rem', color: '#71717a' }}>👤</span>
                                             )}
@@ -401,6 +424,15 @@ const Profile = ({ onNavigate }) => {
 
 // --- HELPER COMPONENTS ---
 
+const getImageUrl = (path) => {
+    if (!path) return null;
+    if (path.startsWith('data:')) return path;
+    if (path.startsWith('http')) return path;
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const baseUrl = apiUrl.replace(/\/api\/?$/, '');
+    return path.startsWith('/') ? `${baseUrl}${path}` : `${baseUrl}/${path}`;
+};
+
 const SidebarItem = ({ icon, label, active, onClick }) => (
     <div
         onClick={onClick}
@@ -430,3 +462,4 @@ const InputGroup = ({ label, icon, children }) => (
 );
 
 export default Profile;
+

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../lib/api';
+import Navbar from '../components/common/Navbar';
+import Footer from '../components/common/Footer';
 
-const CheckProgress = () => {
+const ProjectTracker = () => {
     const [orders, setOrders] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedOrder, setSelectedOrder] = useState(null);
@@ -48,8 +50,10 @@ const CheckProgress = () => {
 
     return (
         <div style={{ background: '#0a0a0a', minHeight: '100vh', color: 'white', fontFamily: 'Inter, sans-serif' }}>
+            <Navbar />
+
             <div style={{
-                paddingTop: '150px',
+                paddingTop: '100px',
                 paddingBottom: '50px',
                 maxWidth: '1200px',
                 margin: '0 auto',
@@ -188,7 +192,7 @@ const CheckProgress = () => {
                 )}
             </div>
 
-
+            <Footer />
 
             {/* DETAIL MODAL */}
             <AnimatePresence>
@@ -298,4 +302,4 @@ const CheckProgress = () => {
     );
 };
 
-export default CheckProgress;
+export default ProjectTracker;
