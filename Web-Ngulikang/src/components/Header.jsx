@@ -10,6 +10,7 @@ const Header = ({ onNavigate, activePage }) => { // 1. Accept onNavigate prop
     const [scrolled, setScrolled] = useState(false);
     const [activeDropdown, setActiveDropdown] = useState(null);
     const [expandedMobileMenu, setExpandedMobileMenu] = useState(null);
+    const [isTouchDevice, setIsTouchDevice] = useState(false);
     const { user, isAuthenticated, logout } = useUser();
     const { showNotification } = useNotification();
 
@@ -38,6 +39,16 @@ const Header = ({ onNavigate, activePage }) => { // 1. Accept onNavigate prop
         };
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia('(hover: none)');
+        const updateTouch = () => {
+            setIsTouchDevice(mediaQuery.matches || 'ontouchstart' in window);
+        };
+        updateTouch();
+        mediaQuery.addEventListener?.('change', updateTouch);
+        return () => mediaQuery.removeEventListener?.('change', updateTouch);
     }, []);
 
     const navItems = [
@@ -158,18 +169,36 @@ const Header = ({ onNavigate, activePage }) => { // 1. Accept onNavigate prop
                         {navItems.map((item) => (
                             <li
                                 key={item.id}
-                                onMouseEnter={() => item.hasDropdown ? setActiveDropdown(item.id) : activeDropdown !== null && setActiveDropdown(null)}
-                                onMouseLeave={() => setActiveDropdown(null)}
+                                onMouseEnter={() => {
+                                    if (isTouchDevice) return;
+                                    if (item.hasDropdown) {
+                                        setActiveDropdown(item.id);
+                                    } else if (activeDropdown !== null) {
+                                        setActiveDropdown(null);
+                                    }
+                                }}
+                                onMouseLeave={() => {
+                                    if (!isTouchDevice) {
+                                        setActiveDropdown(null);
+                                    }
+                                }}
                             >
                                 <a
                                     href={item.href}
                                     className={activeLinkId === item.id ? 'active' : ''}
                                     onClick={(e) => {
-                                        // e.preventDefault();
+                                        if (item.hasDropdown) {
+                                            if (isTouchDevice) {
+                                                e.preventDefault();
+                                                setActiveDropdown(activeDropdown === item.id ? null : item.id);
+                                            }
+                                            return;
+                                        }
                                         if (item.id === 'home') onNavigate('home');
                                         if (item.id === 'marketplace') onNavigate('marketplace');
                                         if (item.id === 'blog') onNavigate('blog');
                                         if (item.id === 'chat') onNavigate('chat');
+                                        setActiveDropdown(null);
                                     }}
                                 >
                                     {item.label}
