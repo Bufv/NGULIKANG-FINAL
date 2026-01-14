@@ -109,7 +109,7 @@ services:
       dockerfile: Dockerfile
     container_name: ngulikang-nginx
     ports:
-      - "80:80"
+      - "8080:80"
     volumes:
       - uploads:/uploads
     depends_on:
